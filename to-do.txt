@@ -1,0 +1,65 @@
+
+DONE: - figure out what do do about keys for ssh.
+
+- ZRS meta recipe
+
+DONE: - finish(?) syncer
+
+  DONE: - don't run if not converged
+  DONE: - add --force option or run if all non-converged hosts are in error state
+  DONE: - lock on updating cluster version
+
+DONE: - make sure agent doesn't do more than one update at a time
+
+DONE: - Option to see non-error command output
+
+DONE: - finish urlshortener buildout (pure sw source-release.cfg)
+
+DONE - agent main program
+
+  We want a "zim manager" loop to report heartbeet and status.
+
+  See agent monitoring.
+
+DONE: - Agent monitoring
+
+  Send status to ??? every few minutes, where status is either success
+  or error, and maybe error/critical if convergence takes too long
+
+DONE - test option in zdaemon to wait for process to be "up".
+
+DONE - Update url-shortener meta-recipe to include test program and
+  log-file option in zdaemon config.
+
+- For urlshortener, Cause the rc script to be reinstalled, causing
+  precesses to restart, when input (ie tree data) changes. DONE
+
+  Add a data option to the rc part who's value is a json dump of a
+  dict of the meta-data options, which should relfect the recipe name
+  and the data read.
+
+DONE: - restart zimagent at end of processing.
+
+- MAYBE, if we can figure it out :), allow for a variation of
+  hostagent that configures aws.  This could largely function like the
+  existing host agent, except:
+
+  - probably want to store ".deployed" files in S3, rather than on a
+    particular host.
+
+  - Need special case in hamdling RPM/opt garbage collection.  We
+    don't want a local host agent to remove an RPM needed for AWS, but
+    not locally, and the other way around.
+
+Later
+-----
+
+- zc.zk logging snafus:
+
+  - blank log messages
+
+  - exceptions on shut down
+
+- why is zktools so fricking slow.
+
+  - why do tests open so many connections to zookeeper

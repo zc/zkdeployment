@@ -1,0 +1,1278 @@
+Agents
+======
+
+.. setup logging
+
+    >>> import logging, sys
+    >>> handler = logging.StreamHandler(sys.stdout)
+    >>> logger = logging.getLogger('zc.zkdeployment')
+    >>> logger.addHandler(handler)
+    >>> handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
+    >>> logger.setLevel(logging.INFO)
+
+Agents are responsible for watching a ZooKeeper tree and making local
+updates to reflect what's in a tree.
+
+Agents can determine their own host identifier.  The host identifier
+comes from /etc/zmh/pxemac.
+
+Create an agent:
+
+    >>> import zc.zkdeployment.agent
+    >>> agent = zc.zkdeployment.agent.Agent()
+    INFO Agent starting, cluster 1, host 1
+
+The agent knows its host identifier:
+
+    >>> agent.host_identifier
+    '424242424242'
+
+An agent may also have a role.  We'll say more about that later. This
+one doesn't have one:
+
+    >>> agent.role
+
+An agent can tell its current version number, as recorded in the zookeeper
+tree.
+
+    >>> import zc.zk
+    >>> zk = zc.zk.ZK('zookeeper:2181')
+    >>> zk.print_tree()
+    /cust
+      /someapp
+        /cms : z4m
+          version = u'1.0.0'
+          /deploy
+            /424242424242
+        /monitor : z4mmonitor
+          version = u'1.1.0'
+          /deploy
+            /424242424242
+    /cust2
+      /someapp
+        /cms : z4m
+          version = u'1.0.0'
+          /deploy
+            /424242424242
+    /hosts
+      version = 1
+      /424242424242
+        name = u'host42'
+        version = 1
+
+    >>> agent.version == zk.get_properties('/hosts/424242424242')['version']
+    True
+
+An agent can also tell the cluster version number, which all hosts in the
+cluster should aspire to.
+
+    >>> agent.cluster_version == zk.get_properties('/hosts')['version']
+    True
+
+When an agent notices a change, it first collects a collection of all
+of the deployments:
+
+    >>> sorted(agent.get_deployments())
+    [Deployment(app=u'z4m', version=u'1.0.0', rpm_name=u'z4m',
+                path='/cust/someapp/cms', n=0),
+     Deployment(app=u'z4m', version=u'1.0.0', rpm_name=u'z4m',
+                path='/cust2/someapp/cms', n=0),
+     Deployment(app=u'z4mmonitor', version=u'1.1.0', rpm_name=u'z4mmonitor',
+                path='/cust/someapp/monitor', n=0)]
+
+This is compared with the installed applications on its host:
+
+    >>> sorted(agent.get_installed_deployments())
+    [UnversionedDeployment(app=u'z4m', path='/cust/someapp/cms', n=0),
+     UnversionedDeployment(app=u'z4m', path='/cust2/someapp/cms', n=0),
+     UnversionedDeployment(app=u'z4mmonitor',
+                           path='/cust/someapp/monitor', n=0)]
+
+OK, we've demonstrated some of the pieces.  Now let's try making a
+change.  Let change the application parts of the tree::
+
+  /cust
+    /someapp
+      /cms : z4m
+         version = '1.0.0'
+         /deploy
+            /424242424242
+
+  /cust2
+    /someapp
+      /cms : z4m
+         version = '1.0.0'
+         /deploy
+            /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+We've removed a monitor installation.
+
+When we update the version number of the hosts node, the agent is
+going to uninstall the missing monitor installation and run the
+installation script for everything that's installed:
+
+    >>> hosts_properties = zk.properties('/hosts')
+    >>> import time
+    >>> version = 1
+    >>> def bump_version():
+    ...     global version
+    ...     version += 1
+    ...     hosts_properties.update(version=version)
+    ...     time.sleep(1)
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 2
+    INFO Removing z4mmonitor /cust/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    yum -q list installed z4m
+    INFO Installing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO Installing z4m /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    INFO Removing RPM z4mmonitor
+    yum -y remove z4mmonitor
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 2
+
+'424242424242' now reports itself as being on version 2 for all of its
+deployments.
+
+    >>> zk.print_tree('/hosts')
+    /hosts
+      version = 2
+      /424242424242
+        name = u'host42'
+        version = 2
+
+If we add a deployment, it will notice this, too, and run the appropriate
+installation::
+
+  /cust
+    /someapp
+      /cms : z4m
+         version = '1.0.0'
+         /deploy
+            /424242424242
+
+  /cust2
+    /someapp
+      /cms : z4m
+         version = '1.0.0'
+         /deploy
+            /424242424242
+      /monitor : z4mmonitor
+         version = '1.1.0'
+         /deploy
+            /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+Here, we're installing a new monitor for cust2
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 3
+    yum -q list installed z4m
+    yum -y clean all
+    INFO Installing RPM z4mmonitor-1.1.0
+    yum -y install z4mmonitor-1.1.0
+    INFO Installing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO Installing z4m /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 3
+
+If we remove a deployment, but there are other deployments using
+the same software, it will not uninstall the RPM.  Here, we'll
+remove a z4m deployment from cust2, but leave one for cust::
+
+  /cust
+    /someapp
+      /cms : z4m
+         version = '1.0.0'
+         /deploy
+            /424242424242
+
+  /cust2
+    /someapp
+      /monitor : z4mmonitor
+         version = '1.1.0'
+         /deploy
+            /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+When we update the tree, the deployment gets removed, but the
+RPM is not uninstalled.
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 4
+    INFO Removing z4m /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
+    yum -q list installed z4m
+    yum -q list installed z4mmonitor
+    INFO Installing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 4
+
+You can also specify multiple deployments of a given type by using the
+``n`` property.  Here, we'll configure 3 z4m instances for cust2::
+
+  /cust
+    /someapp
+      /cms : z4m
+         version = '1.0.0'
+         /deploy
+            /424242424242
+
+  /cust2
+    /someapp
+      /cms : z4m
+         version = '1.0.0'
+         /deploy
+            /424242424242
+              n = 3
+      /monitor : z4mmonitor
+         version = '1.1.0'
+         /deploy
+            /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+Now, when we update the version, the 3 deployments will be installed.
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 5
+    yum -q list installed z4m
+    yum -q list installed z4mmonitor
+    INFO Installing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO Installing z4m /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    INFO Installing z4m /cust2/someapp/cms 1
+    z4m/bin/zookeeper-deploy /cust2/someapp/cms 1
+    INFO Installing z4m /cust2/someapp/cms 2
+    z4m/bin/zookeeper-deploy /cust2/someapp/cms 2
+    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 5
+
+If we reduce the number::
+
+  /cust2
+    /someapp
+      /cms : z4m
+         version = '1.0.0'
+         /deploy
+            /424242424242
+              n = 1
+      /monitor : z4mmonitor
+         version = '1.1.0'
+         /deploy
+            /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+the extra instances will be removed:
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 6
+    INFO Removing z4m /cust2/someapp/cms 1
+    z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 1
+    INFO Removing z4m /cust2/someapp/cms 2
+    z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 2
+    yum -q list installed z4m
+    yum -q list installed z4mmonitor
+    INFO Installing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO Installing z4m /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 6
+
+
+If we update z4m to a newer version::
+
+  /cust
+    /someapp
+      /cms : z4m
+         version = '2.0.0'
+         /deploy
+            /424242424242
+
+  /cust2
+    /someapp
+      /cms : z4m
+         version = '2.0.0'
+         /deploy
+            /424242424242
+              n = 1
+      /monitor : z4mmonitor
+         version = '1.1.0'
+         /deploy
+            /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+yum will install the newer version before updating the deployment.
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 7
+    yum -q list installed z4m
+    yum -y clean all
+    INFO Installing RPM z4m-2.0.0
+    yum -y install z4m-2.0.0
+    yum -q list installed z4mmonitor
+    INFO Installing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO Installing z4m /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 7
+
+
+If our zookeeper tree has conflicting versions for a given app::
+
+  /cust
+    /someapp
+      /cms : z4m
+         version = '2.0.0'
+         /deploy
+            /424242424242
+
+  /cust2
+    /someapp
+      /cms : z4m
+         version = '3.0.0'
+         /deploy
+            /424242424242
+              n = 1
+      /monitor : z4mmonitor
+         version = '1.1.0'
+         /deploy
+            /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+We will get an error.
+
+    >>> bump_version() # doctest: +ELLIPSIS
+    INFO ============================================================
+    INFO Deploying version 8
+    ERROR deploying
+    Traceback (most recent call last):
+    ...
+    ValueError: Inconsistent versions for z4m. u'3.0.0' != u'2.0.0'
+    CRITICAL FAILED deploying version 8
+
+We realize that z4m needs to be installed differently.  We can't
+update z4m installations in place, because the application reads
+installed files at run-time.  We switch to creating a separate RPM
+package for each version. When we update to version 4, the version is
+in the node type, rather than in a property::
+
+  /cust
+    /someapp
+      /cms : z4m-4.0.0
+         /deploy
+            /424242424242
+
+  /cust2
+    /someapp
+      /cms : z4m
+         version = '2.0.0'
+         /deploy
+            /424242424242
+              n = 1
+      /monitor : z4mmonitor
+         version = '1.1.0'
+         /deploy
+            /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+Note that now we can have different instances use different versions.
+``cust`` is upgraded to ``4.0.0``, but ``cust2`` is still running
+``3.0.0``.
+
+    >>> bump_version() # doctest: +ELLIPSIS
+    INFO ============================================================
+    INFO Deploying version 9
+    yum -q list installed z4m
+    yum -y clean all
+    INFO Installing RPM z4m-4.0.0
+    yum -y install z4m-4.0.0
+    yum -q list installed z4mmonitor
+    INFO Installing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO Installing z4m /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 9
+
+
+If we update the version of z4m again, it will install the new RPM,
+reconfigure, and then uninstall the old one, since no deployments are
+using it any more::
+
+  /cust
+    /someapp
+      /cms : z4m-5.0.0
+         /deploy
+            /424242424242
+
+  /cust2
+    /someapp
+      /cms : z4m
+         version = '2.0.0'
+         /deploy
+            /424242424242
+              n = 1
+      /monitor : z4mmonitor
+         version = '1.1.0'
+         /deploy
+            /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+The old rpm gets removed:
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 10
+    yum -q list installed z4m
+    yum -y clean all
+    INFO Installing RPM z4m-5.0.0
+    yum -y install z4m-5.0.0
+    yum -q list installed z4mmonitor
+    INFO Installing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO Installing z4m /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
+    INFO Removing RPM z4m-4.0.0
+    yum -y remove z4m-4.0.0
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 10
+
+In the examples above, we've used host ids.  We can also use host
+names::
+
+  /cust
+    /someapp
+      /cms : z4m-5.0.0
+         /deploy
+            /host42
+
+  /cust2
+    /someapp
+      /cms : z4m
+         version = '2.0.0'
+         /deploy
+            /host42
+              n = 1
+      /monitor : z4mmonitor
+         version = '1.1.0'
+         /deploy
+            /host42
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+In the tree above, the we've replaced the host id with the host name.
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 11
+    yum -q list installed z4m
+    yum -q list installed z4m-5.0.0
+    yum -q list installed z4mmonitor
+    INFO Installing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO Installing z4m /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 11
+
+If we try to deploy to a host with the id 353535353535::
+
+  /cust
+    /someapp
+      /cms : z4m-5.0.0
+         /deploy
+            /host42
+
+  /cust2
+    /someapp
+      /cms : z4m
+         version = '2.0.0'
+         /deploy
+            /host42
+              n = 1
+            /353535353535
+              n = 4
+      /monitor : z4mmonitor
+         version = '1.1.0'
+         /deploy
+            /host42
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+Our host agent will ignore the deployment::
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 12
+    yum -q list installed z4m
+    yum -q list installed z4m-5.0.0
+    yum -q list installed z4mmonitor
+    INFO Installing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO Installing z4m /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 12
+
+If you try to deploy the same deployment to a host identifier and
+its associated human-readable hostname::
+
+  /cust
+    /someapp
+      /cms : z4m-5.0.0
+         /deploy
+            /host42
+
+  /cust2
+    /someapp
+      /cms : z4m
+         version = '2.0.0'
+         /deploy
+            /host42
+              n = 1
+            /424242424242
+              n = 1
+      /monitor : z4mmonitor
+         version = '1.1.0'
+         /deploy
+            /host42
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+You'll get an error::
+
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 13
+    ERROR deploying
+    Traceback (most recent call last):
+    ...
+    ValueError: Conflicting deployments for /cust2/someapp/cms.
+    Can't deploy to host42 and 424242424242.
+    CRITICAL FAILED deploying version 13
+
+We fix the tree::
+
+  /cust2
+    /someapp
+      /cms : z4m
+         version = '2.0.0'
+         /deploy
+            /host42
+              n = 1
+      /monitor : z4mmonitor
+         version = '1.1.0'
+         /deploy
+            /host42
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+And we're good::
+
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 14
+    yum -q list installed z4m
+    yum -q list installed z4m-5.0.0
+    yum -q list installed z4mmonitor
+    INFO Installing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO Installing z4m /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 14
+
+A host can be configured by role, instead of by host id (or name).
+If a host has a role, then it will only be configured by role.  This
+ensures that host of a given role are configured identically.
+
+Suppose we decide that host42 is going to be a cache server.  Let's
+add a cache server config::
+
+  /cust
+    /someapp
+      /cms : z4m-5.0.0
+         /deploy
+            /host42
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+  /cust2
+    /someapp
+      /cms : z4m
+         version = '2.0.0'
+         /deploy
+            /host42
+              n = 1
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+      /monitor : z4mmonitor
+         version = '1.1.0'
+         /deploy
+            /host42
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+and give the host a role:
+
+    >>> import os
+    >>> os.mkdir('etc/zim')
+    >>> with open('etc/zim/role', 'w') as f:
+    ...     f.write('cache\n')
+
+The agent reads the role at startup.  We'll close the agent and
+restart it:
+
+    >>> agent.close()
+    >>> agent = zc.zkdeployment.agent.Agent()
+    INFO Agent starting, cluster 14, host 14
+    >>> agent.role
+    'cache'
+
+When we update the tree version, the agent will report an error,
+because it has both role-based and host-based configurations:
+
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 15
+    ERROR deploying
+    Traceback (most recent call last):
+    ...
+    ValueError: Found a host-based deployment at
+    /cust/someapp/cms/deploy/host42 but the host has a role, cache.
+    CRITICAL FAILED deploying version 15
+
+If we deploy to the role, though::
+
+  /cust
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+  /cust2
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+The deployment goes through, and the host reconfigures itself as a cache.
+
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 16
+    INFO Removing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
+    INFO Removing z4m /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
+    INFO Removing z4mmonitor /cust2/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy -u /cust2/someapp/monitor 0
+    yum -y clean all
+    INFO Installing RPM squid-2.0
+    yum -y install squid-2.0
+    INFO Installing squid /cust/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust/someapp/cache 0
+    INFO Installing squid /cust2/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust2/someapp/cache 0
+    INFO Removing RPM z4m
+    yum -y remove z4m
+    INFO Removing RPM z4m-5.0.0
+    yum -y remove z4m-5.0.0
+    INFO Removing RPM z4mmonitor
+    yum -y remove z4mmonitor
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 16
+
+Error handling
+--------------
+
+When we get errors, wehn calling yum or deploy scripts, the yum or
+script output is logged::
+
+  /cust
+    /someapp
+      /cache : squid
+        version = 'bad'
+        /deploy
+          /cache
+  /cust2
+    /someapp
+      /cache : squid
+        version = 'bad'
+        /deploy
+          /cache
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+Here, the squid version is bad:
+
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 17
+    yum -q list installed squid
+    yum -y clean all
+    INFO Installing RPM squid-bad
+    yum -y install squid-bad
+    ERROR Comand failed: ['yum', '-y', 'install', u'squid-bad']
+          Error: Couldn't find package squid-bad
+    ERROR deploying
+    Traceback (most recent call last):
+    ...
+    RuntimeError: Command failed: yum -y install squid-bad
+    CRITICAL FAILED deploying version 17
+
+Now, we'll install a cranky app::
+
+  /cust
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+      /acrank : cranky
+        version = '1.0'
+        /deploy
+          /cache
+  /cust2
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 18
+    yum -y clean all
+    INFO Installing RPM cranky-1.0
+    yum -y install cranky-1.0
+    yum -q list installed squid
+    INFO Installing cranky /cust/someapp/acrank 0
+    cranky/bin/zookeeper-deploy /cust/someapp/acrank 0
+    ERROR Comand failed: [u'.../opt/cranky/bin/zookeeper-deploy',
+        '/cust/someapp/acrank', '0']
+          waaaaaaaaaaaa
+    ERROR deploying
+    Traceback (most recent call last):
+    ...
+    RuntimeError: Command failed: ...opt/cranky/bin/zookeeper-deploy
+        /cust/someapp/acrank 0
+    CRITICAL FAILED deploying version 18
+
+Let's remove the cranky app::
+
+  /cust
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+  /cust2
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+Everything's fixed now.
+
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 19
+    yum -q list installed squid
+    INFO Installing squid /cust/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust/someapp/cache 0
+    INFO Installing squid /cust2/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust2/someapp/cache 0
+    INFO Removing RPM cranky
+    yum -y remove cranky
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 19
+
+We're done with this agent.
+
+    >>> agent.close()
+
+If an agent can't find its identifier in the zookeeper tree, it will add one,
+and immediately perform any deployments needed to conform to the current
+version::
+
+
+    /hosts
+      version = 19
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+The agent updates itself to version 18.
+
+    >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(.5)
+    INFO Agent starting, cluster 19, host None
+    INFO ============================================================
+    INFO Deploying version 19
+    yum -q list installed squid
+    INFO Installing squid /cust/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust/someapp/cache 0
+    INFO Installing squid /cust2/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust2/someapp/cache 0
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 19
+
+    >>> agent.version
+    19
+
+The agent can also accept an svn location instead of a version.  In this case,
+it will do a subversion checkout of the location and build out the software::
+
+  /cust
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+      /rewriter : pywrite
+        svn_location = 'svn+ssh://svn.zope.com/repos/main/pywrite/trunk'
+        /deploy
+          /cache
+  /cust2
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+When the software is deployed, it will get built out correctly.
+
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 20
+    INFO Checkout pywrite (svn+ssh://svn.zope.com/repos/main/pywrite/trunk)
+    /opt/pywrite/stage-build
+    yum -q list installed squid
+    INFO Installing squid /cust/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust/someapp/cache 0
+    INFO Installing pywrite /cust/someapp/rewriter 0
+    pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
+    INFO Installing squid /cust2/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust2/someapp/cache 0
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 20
+
+On update, it will check out the software again, pulling in any new changes.
+
+    >>> zk.import_tree(tree, trim=True)
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 21
+    INFO Checkout pywrite (svn+ssh://svn.zope.com/repos/main/pywrite/trunk)
+    /opt/pywrite/stage-build
+    yum -q list installed squid
+    INFO Installing squid /cust/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust/someapp/cache 0
+    INFO Installing pywrite /cust/someapp/rewriter 0
+    pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
+    INFO Installing squid /cust2/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust2/someapp/cache 0
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 21
+
+When the svn-deployed software is uninstalled, it will get removed::
+
+  /cust
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+      /rewriter : pywrite
+        svn_location = 'svn+ssh://svn.zope.com/repos/main/pywrite/trunk'
+        /deploy
+  /cust2
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+Now the software will get removed:
+
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 22
+    INFO Removing pywrite /cust/someapp/rewriter 0
+    pywrite/bin/zookeeper-deploy -u /cust/someapp/rewriter 0
+    yum -q list installed squid
+    INFO Installing squid /cust/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust/someapp/cache 0
+    INFO Installing squid /cust2/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust2/someapp/cache 0
+    INFO Removing svn checkout pywrite
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 22
+
+
+Monitoring
+==========
+
+We also provide a monitor for zimagent.  It takes the host agent to be
+monitored as its argument.
+
+    >>> monitor = zc.zkdeployment.agent.Monitor(agent)
+    >>> monitor.agent == agent
+    True
+
+On startup, the monitor registers itself and its URI with the zim master by
+sending an event.
+
+    >>> import zim.messaging
+    >>> def fake_send_event(uri, severity, msg):
+    ...     print uri, severity, msg
+    >>> real_send_event = zim.messaging.send_event
+    >>> zim.messaging.send_event = fake_send_event
+    >>> monitor.startup()
+    /zkdeploy/agent
+    INFO
+    ANNOUNCE: managing
+    {"interval": 300, "uris": ["/zkdeploy/agent"]}
+
+Every interval, the monitor will send a heartbeat announcing its state.  When
+everything's in working order (when the cluster version and the host version
+are equal, it returns an 'ok' state.
+
+    >>> monitor.agent.version == monitor.agent.cluster_version
+    True
+    >>> monitor.send_state()
+    /zkdeploy/agent
+    INFO
+    Host and cluster are in sync
+
+If the host is out of sync with the cluster, we'll get a warning.
+
+    >>> with mock.patch.object(
+    ...         zc.zkdeployment.agent.Agent, 'version') as mocked_version:
+    ...     mocked_version.__get__ = mock.Mock(return_value=1)
+    ...     monitor = zc.zkdeployment.agent.Monitor(agent)
+    ...     monitor.send_state()
+    /zkdeploy/agent
+    WARNING
+    Host and cluster are out of sync (host: 1, cluster: 22)
+
+If we go longer than 15 minutes and the host is still not in sync with the
+cluster, we'll start sending critical events.
+
+    >>> import datetime
+    >>> with mock.patch.object(
+    ...         zc.zkdeployment.agent.Agent, 'version') as mocked_version:
+    ...     mocked_version.__get__ = mock.Mock(return_value=1)
+    ...     monitor = zc.zkdeployment.agent.Monitor(agent)
+    ...     monitor.last_state_change = (zc.time.now() -
+    ...         datetime.timedelta(days=1))
+    ...     monitor.send_state()
+    /zkdeploy/agent
+    CRITICAL
+    Host and cluster are more than 15 minutes out of sync
+
+If on the other hand, the host has been ok for more than 15 minutes,
+we won't get an error.
+
+    >>> monitor.agent.version == monitor.agent.cluster_version
+    True
+    >>> monitor.last_state_change = (zc.time.now() -
+    ...     datetime.timedelta(days=1))
+    >>> monitor.send_state()
+    /zkdeploy/agent
+    INFO
+    Host and cluster are in sync
+
+
+If we get an exception while deploying, a critical alert will be sent
+
+   >>> monitor = zc.zkdeployment.agent.Monitor(agent)
+
+A simple tree::
+
+  /cust
+    /someapp
+      /cms : z4m
+         version = '2.0.0'
+         /deploy
+            /424242424242
+
+  /cust2
+    /someapp
+      /cms : z4m
+         version = '3.0.0'
+         /deploy
+            /424242424242
+              n = 1
+      /monitor : z4mmonitor
+         version = '1.1.0'
+         /deploy
+            /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+We will get an error.
+
+    >>> bump_version() # doctest: +ELLIPSIS
+    INFO ============================================================
+    INFO Deploying version 23
+    ERROR deploying
+    Traceback (most recent call last):
+    ...
+    ValueError: Found a host-based deployment at /cust/someapp/cms/deploy/424242424242 but the host has a role, cache.
+    CRITICAL FAILED deploying version 23
+
+   >>> monitor.send_state()
+    /zkdeploy/agent
+    CRITICAL
+    Host exception on deploy()
+
+If the next deployment succeeds, the monitor will turn green::
+
+  /cust
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+      /rewriter : pywrite
+        svn_location = 'svn+ssh://svn.zope.com/repos/main/pywrite/trunk'
+        /deploy
+  /cust2
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+When we send our state, we'll get an INFO message:
+
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 24
+    yum -q list installed squid
+    INFO Installing squid /cust/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust/someapp/cache 0
+    INFO Installing squid /cust2/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust2/someapp/cache 0
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 24
+    >>> monitor.send_state()
+    /zkdeploy/agent
+    INFO
+    Host and cluster are in sync
+
+
+The monitor needs to report presence periodically:
+
+
+   >>> monitor.report_presence()
+    /managers/zkdeploymanager
+    INFO
+    Running
+
+
+On shutdown, the monitor unregisters its URI with the zim master by sending
+a 'unmanaging' event.
+
+    >>> monitor.shutdown()
+    /zkdeploy/agent
+    INFO
+    ANNOUNCE: unmanaging
+    {"interval": 300, "uris": ["/zkdeploy/agent"]}
+
+Once the monitor exists, you can start its periodic sending of zim events with
+the `run` method.  `run` will first send a `managing` announcement, followed by
+periodic presence and status announcements.  When it gets a SIGTERM or
+KeyboardInterrupt, it will unregister itself from zim and shut down.
+
+Here, we'll see what happens when we give it a KeyboardInterrupt during the
+send_state call:
+
+    >>> with mock.patch.object(
+    ...         zc.zkdeployment.agent.Monitor, 'send_state') as mocked_send_state:
+    ...     mocked_send_state.side_effect = KeyboardInterrupt
+    ...     monitor = zc.zkdeployment.agent.Monitor(agent)
+    ...     monitor.run()
+    /zkdeploy/agent
+    INFO
+    ANNOUNCE: managing
+    {"interval": 300, "uris": ["/zkdeploy/agent"]}
+    /managers/zkdeploymanager
+    INFO
+    Running
+    /zkdeploy/agent
+    INFO
+    ANNOUNCE: unmanaging
+    {"interval": 300, "uris": ["/zkdeploy/agent"]}
+
+The monitor successfully unregistered itself.
+
+The same will happen when we send a SIGTERM signal.  Note that we manually call
+sys.exit() in our signal handler, since the run loop won't terminate otherwise:
+
+    >>> import signal
+    >>> def send_sigterm():
+    ...     os.kill(os.getpid(), signal.SIGTERM)
+    >>> class SysExit(Exception):
+    ...     pass
+    >>> with mock.patch.object(
+    ...         zc.zkdeployment.agent.Monitor, 'send_state') as mocked_send_state:
+    ...     mocked_send_state.side_effect = send_sigterm
+    ...     monitor = zc.zkdeployment.agent.Monitor(agent)
+    ...     with mock.patch('sys.exit') as mocked_exit:
+    ...         mocked_exit.side_effect = SysExit
+    ...         try:
+    ...             monitor.run()
+    ...         except SysExit:
+    ...             print "sys.exit() called"
+    /zkdeploy/agent
+    INFO
+    ANNOUNCE: managing
+    {"interval": 300, "uris": ["/zkdeploy/agent"]}
+    /managers/zkdeploymanager
+    INFO
+    Running
+    /zkdeploy/agent
+    INFO
+    ANNOUNCE: unmanaging
+    {"interval": 300, "uris": ["/zkdeploy/agent"]}
+    sys.exit() called
+
+
+.. tear down
+
+    >>> logger.removeHandler(handler)
+    >>> logger.setLevel(logging.NOTSET)
+    >>> zim.messaging.send_event = real_send_event
+
+
+.. [#testroot] To make testing easier, the applications in this
+   framework respect the environment variable TEST_ROOT when looking
+   for and creating files. In the test set up we set this to the
+   current directiory, which is itself a test directory.

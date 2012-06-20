@@ -1,0 +1,226 @@
+==============
+Zookeeper Sync
+==============
+
+.. setup logging
+
+    >>> import logging, sys
+    >>> handler = logging.StreamHandler(sys.stdout)
+    >>> logger = logging.getLogger('zc.zkdeployment')
+    >>> logger.addHandler(handler)
+    >>> handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
+    >>> logger.setLevel(logging.INFO)
+
+
+sync_with_canonical
+-------------------
+
+sync_with_canonical does the full dance to update a cluster's zookeeper
+tree.
+
+It performs the following actions:
+
+    - Determines if there has been a modification in svn
+    - Performs a zkimport for all .zk trees in the cluster
+    - bumps the /hosts/version attribute to the new svn revision
+
+First, we'll need to do some setup.
+
+    >>> import zc.zk
+    >>> zk = zc.zk.ZK('zookeeper:2181')
+    >>> svn_info = """Path: .
+    ... URL: svn+ssh://svn.zope.com/repos/main/home/jim/zkdeployment
+    ... Repository Root: svn+ssh://svn.zope.com/repos/main
+    ... Repository UUID: 32cb22c4-c7e1-0310-b164-a889846e9adb
+    ... Revision: 68951
+    ... Node Kind: directory
+    ... Schedule: normal
+    ... Last Changed Author: jackie
+    ... Last Changed Rev: VERSION
+    ... Last Changed Date: 2012-04-27 18:12:10 -0400 (Fri, 27 Apr 2012)"""
+
+Now let's set up the tree::
+
+  /hosts
+    version = 123
+
+.. -> tree
+
+And import it:
+
+    >>> import zc.zkdeployment.sync
+    >>> import mock
+    >>> zk.import_tree(tree, trim=True)
+    >>> svn_cmd_patcher = mock.patch('zc.zkdeployment.sync.svn_cmd')
+    >>> def fake_svn(*args):
+    ...     if args[0] == 'info':
+    ...         return svn_info
+    ...     if args[0] == 'ls':
+    ...         return ['foo.zk', 'bar.zk', 'baz.txt']
+    ...     if args[0] == 'cat':
+    ...         return '/foo\n  /bar'
+    >>> svn_cmd_mock = svn_cmd_patcher.start()
+    >>> svn_cmd_mock.side_effect = fake_svn
+
+If it doesn't detect a difference, nothing will be done.
+
+    >>> svn_info = svn_info.replace('VERSION', '123')
+    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=False)
+    INFO VCS Version: 123
+    INFO ZK Version: 123
+
+If it does detect a difference, it will attempt to resolve it by importing the
+tree under version control.
+
+    >>> svn_info = svn_info.replace('123', '124')
+    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=False)
+    INFO VCS Version: 124
+    INFO ZK Version: 123
+    INFO Version mismatch detected, resyncing
+    INFO Importing foo.zk
+    INFO Importing bar.zk
+
+If we try to run it again, nothing will happen, since the ZK version now
+matches the VCS version.
+
+    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=False)
+    INFO VCS Version: 124
+    INFO ZK Version: 124
+
+Let's bump the version again, and this time try a dry-run.
+
+    >>> svn_info = svn_info.replace('124', '125')
+    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=True)
+    INFO VCS Version: 125
+    INFO ZK Version: 124
+    INFO Version mismatch detected, resyncing
+    INFO Importing foo.zk (dry run, no action taken)
+    INFO Importing bar.zk (dry run, no action taken)
+
+It didn't do anything, so if we run it again, it will show that there
+are still pending changes.
+
+    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=True)
+    INFO VCS Version: 125
+    INFO ZK Version: 124
+    INFO Version mismatch detected, resyncing
+    INFO Importing foo.zk (dry run, no action taken)
+    INFO Importing bar.zk (dry run, no action taken)
+
+Let's finish up and run it for real.
+
+    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=False)
+    INFO VCS Version: 125
+    INFO ZK Version: 124
+    INFO Version mismatch detected, resyncing
+    INFO Importing foo.zk
+    INFO Importing bar.zk
+
+If you try to sync while some hosts have not yet converged with the previous
+update, you'll get an error.  Here, we'll set up a tree with two hosts, one
+of which is still out of date::
+
+   /hosts
+     version = 125
+     /1.2.3.4
+       version = 125
+     /1.2.3.5
+       version = 124
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+Now we'll try to sync:
+
+    >>> svn_info = svn_info.replace('125', '126')
+    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=False)
+    INFO VCS Version: 126
+    INFO ZK Version: 125
+    ERROR Version mismatch detected, can't resync since host 1.2.3.5 has not
+    converged (124 -> 125)
+
+If we run with the `force` flag, we'll do the deployment anyway, since we
+presumably know what we're doing.
+
+    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=False,
+    ...     force=True)
+    INFO VCS Version: 126
+    INFO ZK Version: 125
+    INFO Version mismatch detected, resyncing
+    INFO Importing foo.zk
+    INFO Importing bar.zk
+
+If we try to sync while another syncer is already updating the tree, we'll get
+an error::
+
+   /hosts
+     version = 125
+     /1.2.3.4
+       version = 125
+     /1.2.3.5
+       version = 125
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+We'll steal the lock and try to do the sync now:
+
+    >>> svn_info = svn_info.replace('125', '126')
+    >>> import zktools.locking
+    >>> cluster_lock = zktools.locking.ZkLock(zk, ',hosts')
+    >>> with zktools.locking.ZkLock(zk, ',hosts'):
+    ...     zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=False)
+    INFO VCS Version: 126
+    INFO ZK Version: 125
+    ERROR Refused to update zookeeper tree, couldn't obtain cluster lock
+
+If we try again without the stolen lock, it'll acquire it just fine and do the
+import.
+
+    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=False)
+    INFO VCS Version: 126
+    INFO ZK Version: 125
+    INFO Version mismatch detected, resyncing
+    INFO Importing foo.zk
+    INFO Importing bar.zk
+
+    >>> svn_cmd_patcher.stop()
+
+
+get_svn_version
+---------------
+
+get_svn_version takes the output of an "svn info" command and returns the
+latest revision number (Last Changed Rev).
+
+    >>> svn_body = """Path: .
+    ... URL: svn+ssh://svn.zope.com/repos/main/zookeeper-trees/trunk
+    ... Repository Root: svn+ssh://svn.zope.com/repos/main
+    ... Repository UUID: 32cb22c4-c7e1-0310-b164-a889846e9adb
+    ... Revision: 68578
+    ... Node Kind: directory
+    ... Schedule: normal
+    ... Last Changed Author: jim
+    ... Last Changed Rev: 68528
+    ... Last Changed Date: 2012-04-17 09:56:21 -0400 (Tue, 17 Apr 2012)
+    ... """
+    >>> zc.zkdeployment.sync.get_svn_version(svn_body)
+    68528
+
+
+get_zk_version
+--------------
+
+get_zk_version will return the current version of the cluster, as determined
+by the zookeeper '/hosts' property.
+
+    >>> zk.properties('/hosts').update(version=42)
+    >>> zc.zkdeployment.sync.get_zk_version(zk)
+    42
+
+.. tear down
+
+    >>> logger.removeHandler(handler)
+    >>> logger.setLevel(logging.NOTSET)

@@ -1,0 +1,77 @@
+=======
+Stories
+=======
+
+Optionally start processes when installing rc scripts
+=====================================================
+
+Currently, zc.recipe.rhrc doesn't do process management.  If we want
+to make things completely automated, it should.  In addition, it
+should have some facility for waiting for processes to start fully.
+
+New options:
+
+manage-processes
+  Boolean: if true, then start process on install and stop on
+  uninstall.
+
+Status: done
+
+
+zdaemon optionally waits for a test to succeed on startup
+=========================================================
+
+zdaemon grows new options:
+
+startup-test
+  PROGRAM
+
+  Wait for program to return a 0 status code.  Run program repeatedly,
+  sleeping a second between attempts, until it exits with a 0 status.
+
+  PROGRAM is a test-program path with optional arguments.
+
+startup-timeout
+  Wait up to the given number of seconds for startup or until the
+  child process stops being restarted, whichever is lesser, before
+  reporting a startup failure.
+
+Assigned: jim
+
+Agent synchronizes deployments on a host with ZK tree
+=====================================================
+
+See agent description in README.rst
+
+zookeeper-deploy for URL shortener
+==================================
+
+zookeeper-deploy for ZRS
+========================
+
+Zookeeper-synchronization agent
+===============================
+
+The ZooKeeper synchronization agent polls VCS for changes to a
+ZooKeeper tree for its cluster.  When it identifies a change, it
+checks it for errors.
+
+If there is an error, it sends an error email.
+
+If there is no error, it updates the ZooKeeper tree by:
+
+- Importing file that's changed.
+
+- Updating the ``/hosts`` ``version`` property with the new VCS
+  version.
+
+ZooKeeper check-in agent
+========================
+
+The ZooKeeper checkin agent is a VCS pre-commit hook that checks a
+cluster's trees for errors:
+
+- Can the tree be parsed with zc.zk import script.
+
+- Does the model imply inconsistent RPM versions or patch levels for a
+  host.
