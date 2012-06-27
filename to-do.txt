@@ -45,3 +45,5 @@ Later
   - Need special case in hamdling RPM/opt garbage collection.  We
     don't want a local host agent to remove an RPM needed for AWS, but
     not locally, and the other way around.
+
+- OS and move to github
