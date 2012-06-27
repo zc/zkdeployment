@@ -1,46 +1,41 @@
 
-DONE: - figure out what do do about keys for ssh.
+- Figure out some more what do do w keys :)
 
-- ZRS meta recipe
+  - Leverage host-specific ssh config to specify key files
 
-DONE: - finish(?) syncer
+  - Leverage global host keys
 
-  DONE: - don't run if not converged
-  DONE: - add --force option or run if all non-converged hosts are in error state
-  DONE: - lock on updating cluster version
+  - Refactor/test buildoutsftp
 
-DONE: - make sure agent doesn't do more than one update at a time
+- ZRS meta recipe needs to be merged, new rpm
 
-DONE: - Option to see non-error command output
+- Verify that agent errors if process doesn't start fast enough.
 
-DONE: - finish urlshortener buildout (pure sw source-release.cfg)
+- urlshortener meta recipe set zdaemon start-test-program
 
-DONE - agent main program
+Later
+-----
 
-  We want a "zim manager" loop to report heartbeet and status.
+- Fix zimagent to remove monitors when agent.d files are removed and
+  add monitors when agent.d files are added **without restart**!!!
 
-  See agent monitoring.
+- One-off run of hostagent
 
-DONE: - Agent monitoring
+  - Always converges, doesn't care about cluster version.
 
-  Send status to ??? every few minutes, where status is either success
-  or error, and maybe error/critical if convergence takes too long
+  - Makes testing/staging easier.
 
-DONE - test option in zdaemon to wait for process to be "up".
+- zc.zk logging snafus:
 
-DONE - Update url-shortener meta-recipe to include test program and
-  log-file option in zdaemon config.
+  - exceptions on shut down
 
-- For urlshortener, Cause the rc script to be reinstalled, causing
-  precesses to restart, when input (ie tree data) changes. DONE
+- why is zktools so fricking slow.
 
-  Add a data option to the rc part who's value is a json dump of a
-  dict of the meta-data options, which should relfect the recipe name
-  and the data read.
+  - why do tests open so many connections to zookeeper
 
-DONE: - restart zimagent at end of processing.
+- Include log file in zdaemon configs, so that the logtail command works.
 
-- MAYBE, if we can figure it out :), allow for a variation of
+- Allow for a variation of
   hostagent that configures aws.  This could largely function like the
   existing host agent, except:
 
@@ -50,16 +45,3 @@ DONE: - restart zimagent at end of processing.
   - Need special case in hamdling RPM/opt garbage collection.  We
     don't want a local host agent to remove an RPM needed for AWS, but
     not locally, and the other way around.
-
-Later
------
-
-- zc.zk logging snafus:
-
-  - blank log messages
-
-  - exceptions on shut down
-
-- why is zktools so fricking slow.
-
-  - why do tests open so many connections to zookeeper
