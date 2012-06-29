@@ -23,11 +23,12 @@ import manuel.doctest
 import manuel.footnote
 import manuel.testing
 import mock
-import re
 import os
+import re
 import shutil
 import subprocess
 import sys
+import time
 import traceback
 import unittest
 import zc.zk.testing
@@ -104,7 +105,23 @@ initial_tree = """
           /424242424242
 """
 
-def subprocess_call(args, stdout=None, stderr=None):
+class FakeSubprocess(object):
+    def __init__(self, stdoutdata='', stderrdata='', returncode=0, duration=0):
+        self.stdoutdata = stdoutdata
+        self.stderrdata = stderrdata
+        self.returncode = returncode
+        self.duration = duration
+
+    def communicate(self):
+        if self.duration != 0:
+            time.sleep(self.duration)
+        return (self.stdoutdata, self.stderrdata)
+
+    def terminate(self):
+        print 'Terminating process'
+
+
+def subprocess_popen(args, stdout=None, stderr=None):
     try:
         if stderr is not subprocess.STDOUT:
             raise TypeError('bad subprocess call')
@@ -120,12 +137,14 @@ def subprocess_call(args, stdout=None, stderr=None):
                uninstall = True
                if app == 'uncranky':
                    print >> stdout, "waaaaaaaaaaaa I don't wanna go"
-                   return 1
+                   return FakeSubprocess(returncode=1)
             else:
                uninstall = False
                if app == 'cranky':
                    print >> stdout, 'waaaaaaaaaaaa'
-                   return 1
+                   return FakeSubprocess(returncode=1)
+               elif app == 'tooslow':
+                   return FakeSubprocess(returncode=1, duration=999)
 
             deployed = os.path.join(
                 'etc', app,
@@ -148,7 +167,7 @@ def subprocess_call(args, stdout=None, stderr=None):
                 if not start_with_digit(version):
                     print >> stdout, "Error: Couldn't find package %s-%s" % (
                         package, version)
-                    return 1
+                    return FakeSubprocess(returncode=1)
                 if package == 'z4m' and version >= '4.0.0':
                     package += '-' + version
                 buildfs(
@@ -179,7 +198,7 @@ def subprocess_call(args, stdout=None, stderr=None):
                     print >> stdout, package, '\t', version, '\t', 'installed'
                 else:
                     print >> stdout, 'Error: No matching Packages to list'
-                    return 1
+                    return FakeSubprocess(returncode=1)
             else:
                 raise ValueError(command)
 
@@ -203,9 +222,9 @@ def subprocess_call(args, stdout=None, stderr=None):
             raise ValueError("No such command %s %r" % (command, args))
     except:
         traceback.print_exc()
-        return 1
+        return FakeSubprocess(returncode=1)
     else:
-        return 0
+        return FakeSubprocess(returncode=0)
 
 def setUp(test):
     zope.testing.setupstack.setUpDirectory(test)
@@ -215,9 +234,6 @@ def setUp(test):
         test, lambda : zc.zk.testing.tearDown(test))
     buildfs(initial_file_system)
 
-    zope.testing.setupstack.context_manager(
-        test, mock.patch('subprocess.call')
-        ).side_effect = subprocess_call
     zope.testing.setupstack.context_manager(
         test, mock.patch('socket.getfqdn')
         ).return_value = 'host42'
