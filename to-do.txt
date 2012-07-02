@@ -13,6 +13,19 @@
 
 - urlshortener meta recipe set zdaemon start-test-program
 
+Really nice to have sooner rather than later
+--------------------------------------------
+
+- A way to run once, independent of a cluster version change
+
+  This is useful when debugging and when reconvering from errors.
+  (Although, when recovering from errors, you should be able to forse
+  a run by just restarting.
+
+- verbose mode in which all command outout is output.
+
+  Bonus: use select to read output from sub-commands to allow output sooner.
+
 Later
 -----
 
