@@ -1,10 +1,13 @@
 import collections
 import datetime
 import logging
+import optparse
 import os
 import shutil
+import signal
 import simplejson
 import socket
+import sys
 import time
 import zc.thread
 import zc.time
@@ -14,8 +17,6 @@ import zim.config
 import zim.element
 import zim.messaging
 import zktools.locking
-import signal
-import sys
 
 DONT_CARE = object()
 
@@ -34,8 +35,9 @@ UnversionedDeployment = collections.namedtuple('UnversionedDeployment',
 
 class Agent(object):
 
-    def __init__(self, monitor_cb=None):
+    def __init__(self, monitor_cb=None, verbose=False, run_once=False):
         self.monitor_cb = monitor_cb
+        self.verbose = verbose
         self.root = os.getenv('TEST_ROOT', '/')
         self.zk = zc.zk.ZK(ZK_LOCATION)
         with open(os.path.join(self.root, PXEMAC_LOCATION), 'r') as fi:
@@ -55,11 +57,14 @@ class Agent(object):
             with open(self._path(ROLE_LOCATION)) as f:
                 self.role = f.read().strip()
 
-        @self.properties
-        def cluster_changed(properties):
-            zc.thread.Thread(self.deploy)
-            # import warnings; warnings.warn('Undebug')
-            # self.deploy()
+        if run_once:
+            self.deploy()
+        else:
+            @self.properties
+            def cluster_changed(properties):
+                zc.thread.Thread(self.deploy)
+                # import warnings; warnings.warn('Undebug')
+                # self.deploy()
 
     def close(self):
         self.zk.close()
@@ -152,7 +157,8 @@ class Agent(object):
             return None
         try:
             output = zc.zkdeployment.run_command(
-                    ('yum -q list installed '+rpm_name).split())
+                    ('yum -q list installed '+rpm_name).split(),
+                    verbose=self.verbose)
         except RuntimeError:
             return None
         for line in output.splitlines():
@@ -168,7 +174,8 @@ class Agent(object):
 
     def uninstall_rpm(self, rpm_name):
         logger.info("Removing RPM " + rpm_name)
-        zc.zkdeployment.run_command(['yum', '-y', 'remove', rpm_name])
+        zc.zkdeployment.run_command(['yum', '-y', 'remove', rpm_name],
+                verbose=self.verbose)
         self._uninstall(rpm_name)
 
     def uninstall_something(self, opt_name):
@@ -192,7 +199,8 @@ class Agent(object):
             action = 'Removing'
         logger.info(' '.join([action, deployment.app, deployment.path,
                               str(deployment.n)]))
-        zc.zkdeployment.run_command(cmd_list)
+        zc.zkdeployment.run_command(cmd_list,
+                verbose=self.verbose)
         if remove:
             deployed = self._path(
                 'etc', deployment.app,
@@ -247,9 +255,11 @@ class Agent(object):
                             self.uninstall_rpm(rpm_name)
                         logger.info("Checkout %s (%s) " % (rpm_name, version))
                         zc.zkdeployment.run_command(
-                            ['svn', 'co', version, self._path('opt', rpm_name)])
+                            ['svn', 'co', version, self._path('opt', rpm_name)],
+                            verbose=self.verbose)
                         zc.zkdeployment.run_command(
-                            [self._path('opt', rpm_name, 'stage-build')])
+                            [self._path('opt', rpm_name, 'stage-build')],
+                            verbose=self.verbose)
                         if not os.path.exists(self._path('etc', rpm_name)):
                             os.mkdir(self._path('etc', rpm_name))
                         continue
@@ -257,11 +267,13 @@ class Agent(object):
                         rpm_name += '-' + version
 
                     if not clean:
-                        zc.zkdeployment.run_command('yum -y clean all'.split())
+                        zc.zkdeployment.run_command('yum -y clean all'.split(),
+                                verbose=self.verbose)
                         clean = True
                     logger.info("Installing RPM " + rpm_name)
                     zc.zkdeployment.run_command(
-                        ['yum', '-y', 'install', rpm_name])
+                        ['yum', '-y', 'install', rpm_name],
+                        verbose=self.verbose)
 
             # Now update/install the needed deployments
             for deployment in sorted(deployments, key=lambda d: (d.path, d.n)):
@@ -279,7 +291,8 @@ class Agent(object):
                 self.uninstall_something(rpm_name)
 
             logger.info("Restarting zimagent")
-            zc.zkdeployment.run_command(['/etc/init.d/zimagent', 'restart'])
+            zc.zkdeployment.run_command(['/etc/init.d/zimagent', 'restart'],
+                    verbose=self.verbose)
             self.zk.properties('/hosts/' + self.host_identifier).update(
                 version=self.cluster_version)
         except:
@@ -374,11 +387,20 @@ class Monitor(object):
 
 
 def main():
+    parser = optparse.OptionParser()
+    parser.add_option(
+        '--verbose', '-v', dest='verbose', action='store_true', default=False,
+        help='Log all output')
+    parser.add_option(
+        '--run-once', '-1', dest='run_once', action='store_true',
+        default=False, help='Run one deployment, and then exit')
+    options, args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG)
     ZK_LOCATION = 'zookeeper:2181'
 
-    agent = Agent()
+    agent = Agent(verbose=options.verbose, run_once=options.run_once)
     monitor = Monitor(agent)
-    agent.monitor_cb = monitor.send_state
-    monitor.run()
+    if not options.run_once:
+        agent.monitor_cb = monitor.send_state
+        monitor.run()
 

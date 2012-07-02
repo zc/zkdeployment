@@ -9,7 +9,7 @@ TIMEOUT_INTERVAL = 900 # seconds
 logger = logging.getLogger(__name__)
 
 
-def run_command(cmd_list, timeout=None):
+def run_command(cmd_list, timeout=None, verbose=False):
     timeout = timeout or TIMEOUT_INTERVAL
     tfile = tempfile.NamedTemporaryFile('w', delete=False)
     process = []
@@ -32,4 +32,8 @@ def run_command(cmd_list, timeout=None):
                         (cmd_list,
                          output.replace('\n', '\n  ').strip()))
         raise RuntimeError('Command failed: ' + ' '.join(cmd_list))
+    elif verbose:
+        logger.info("Command succeeded: %r\n  %s" %
+                (cmd_list,
+                 output.replace('\n', '\n  ').strip()))
     return output
