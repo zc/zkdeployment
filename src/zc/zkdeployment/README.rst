@@ -399,12 +399,16 @@ Consider a run-time tree with some providers::
        /providers
          /app1.example.com:12345
             pid = 1000
+            version = '1.1'
          /app1.example.com:12346
             pid = 1001
+            version = '1.1'
          /app2.example.com:12345
             pid = 1000
+            version = '1.1'
          /app2.example.com:12346
             pid = 1001
+            version = '1.1'
        /deploy
          /app1.example.com
             n = 2
