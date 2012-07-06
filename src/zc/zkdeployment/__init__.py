@@ -27,13 +27,19 @@ def run_command(cmd_list, timeout=None, verbose=False):
     with open(tfile.name) as f:
         output = f.read()
     os.remove(tfile.name)
-    if process[0].returncode != 0:
-        logger.error("Command failed: %r\n  %s" %
-                        (cmd_list,
-                         output.replace('\n', '\n  ').strip()))
-        raise RuntimeError('Command failed: ' + ' '.join(cmd_list))
-    elif verbose:
-        logger.info("Command succeeded: %r\n  %s" %
-                (cmd_list,
-                 output.replace('\n', '\n  ').strip()))
+
+    if worker.exception:
+        raise worker.exception
+
+    if process:
+        if process[0].returncode != 0:
+            logger.error("Command failed: %r\n  %s" %
+                            (cmd_list,
+                             output.replace('\n', '\n  ').strip()))
+            raise RuntimeError('Command failed: ' + ' '.join(cmd_list))
+        elif verbose:
+            logger.info("Command succeeded: %r\n  %s" %
+                    (cmd_list,
+                     output.replace('\n', '\n  ').strip()))
+
     return output

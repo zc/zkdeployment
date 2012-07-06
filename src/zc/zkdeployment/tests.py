@@ -226,6 +226,17 @@ def subprocess_popen(args, stdout=None, stderr=None):
     else:
         return FakeSubprocess(returncode=0)
 
+def test_run_bad_command():
+    """
+    If the command passed to run command doesn't exist, we need an error report:
+
+    >>> import zc.zkdeployment
+    >>> zc.zkdeployment.run_command(['wtf111111111111'])
+    Traceback (most recent call last):
+    ...
+    OSError: [Errno 2] No such file or directory
+    """
+
 def setUp(test):
     zope.testing.setupstack.setUpDirectory(test)
     zc.zk.testing.setUp(test, initial_tree, connection_string='zookeeper:2181')
@@ -248,6 +259,11 @@ def test_suite():
                 ) +
             manuel.capture.Manuel(),
             'sync.txt', 'agent.txt',
+            setUp=setUp,
+            tearDown=zope.testing.setupstack.tearDown,
+            ))
+    suite.addTest(
+        doctest.DocTestSuite(
             setUp=setUp,
             tearDown=zope.testing.setupstack.tearDown,
             ))
