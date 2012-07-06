@@ -37,15 +37,17 @@ def sync_with_canonical(url, dry_run=False, force=False):
         for child in zk.get_children('/hosts'):
             host_version = zk.properties('/hosts/' + child)['version']
             if host_version != zk_version and not force:
-                logger.error("Version mismatch detected, can't resync since " +
-                            "host %s has not converged (%s -> %s)" % (
-                                child, host_version, zk_version))
+                logger.error(
+                    "Version mismatch detected, can't resync since " +
+                    "host %s has not converged (%s -> %s)" % (
+                        child, host_version, zk_version))
                 return
         cluster_lock = zktools.locking.ZkLock(zk, ',hosts')
         try:
             if cluster_lock.acquire(0):
                 logger.info("Version mismatch detected, resyncing")
-                file_list = [fi for fi in svn_cmd('ls', url) if fi.endswith('.zk')]
+                file_list = [fi for fi in svn_cmd('ls', url)
+                             if fi.endswith('.zk')]
                 # Import changes
                 for fi in file_list:
                     output = ' '.join(('Importing', fi))
