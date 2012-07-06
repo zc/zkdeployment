@@ -395,7 +395,10 @@ def main():
         '--run-once', '-1', dest='run_once', action='store_true',
         default=False, help='Run one deployment, and then exit')
     options, args = parser.parse_args()
-    logging.basicConfig(level=logging.DEBUG)
+    assert not args
+    logging.basicConfig(
+        level=logging.DEBUG if options.verbose else logging.INFO
+        )
     ZK_LOCATION = 'zookeeper:2181'
 
     agent = Agent(verbose=options.verbose, run_once=options.run_once)
