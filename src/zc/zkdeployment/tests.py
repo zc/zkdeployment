@@ -49,7 +49,9 @@ initial_file_system = dict(
             'cust,someapp,cms.0.deployed': '',
             'cust2,someapp,cms.0.deployed': '',
             },
-        ),
+        **{
+            'init.d': dict(zimagent=''),
+            }),
     opt = dict(
         z4mmonitor = dict(
             bin={'zookeeper-deploy': ''},

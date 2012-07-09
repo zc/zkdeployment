@@ -1345,7 +1345,7 @@ When we send our state, we'll get an INFO message:
 The monitor needs to report presence periodically:
 
 
-   >>> monitor.report_presence()
+    >>> monitor.report_presence()
     /managers/zkdeploymanager
     INFO
     Running
@@ -1417,6 +1417,21 @@ sys.exit() in our signal handler, since the run loop won't terminate otherwise:
     ANNOUNCE: unmanaging
     {"interval": 300, "uris": ["/zkdeploy/agent"]}
     sys.exit() called
+
+If there isn't a zimagent run script, you'll get a warning, but not an
+error:
+
+    >>> os.remove(os.path.join('etc', 'init.d', 'zimagent'))
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 29
+    yum -q list installed squid
+    INFO Installing squid /cust/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust/someapp/cache 0
+    INFO Installing squid /cust2/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust2/someapp/cache 0
+    WARNING No zimagent. I hope you're screwing around. :)
+    INFO Done deploying version 29
 
 
 .. tear down

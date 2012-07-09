@@ -290,9 +290,13 @@ class Agent(object):
                 ):
                 self.uninstall_something(rpm_name)
 
-            logger.info("Restarting zimagent")
-            zc.zkdeployment.run_command(['/etc/init.d/zimagent', 'restart'],
-                    verbose=self.verbose)
+            if os.path.exists(self._path('etc', 'init.d', 'zimagent')):
+                logger.info("Restarting zimagent")
+                zc.zkdeployment.run_command(['/etc/init.d/zimagent', 'restart'],
+                                            verbose=self.verbose)
+            else:
+                logger.warning("No zimagent. I hope you're screwing around. :)")
+
             self.zk.properties('/hosts/' + self.host_identifier).update(
                 version=self.cluster_version)
         except:
