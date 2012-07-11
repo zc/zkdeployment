@@ -17,6 +17,10 @@ import zim.config
 import zim.element
 import zim.messaging
 import zktools.locking
+import zookeeper
+
+# Hack, zktools.locking calls zookeeper.set_log_stream, which messes up zk.
+zookeeper.set_log_stream = lambda f: None
 
 DONT_CARE = object()
 
