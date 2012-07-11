@@ -11,7 +11,8 @@ logger = logging.getLogger(__name__)
 
 def run_command(cmd_list, timeout=None, verbose=False):
     timeout = timeout or TIMEOUT_INTERVAL
-    tfile = tempfile.NamedTemporaryFile('w', delete=False)
+    tfile = tempfile.NamedTemporaryFile('w', delete=False,
+                                        prefix='zkdeployment-run_command')
     process = []
     @zc.thread.Thread
     def worker():
