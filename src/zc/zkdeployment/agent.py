@@ -14,7 +14,6 @@ import zc.time
 import zc.zk
 import zc.zkdeployment
 import zim.config
-import zim.element
 import zim.messaging
 import zktools.locking
 import zookeeper
