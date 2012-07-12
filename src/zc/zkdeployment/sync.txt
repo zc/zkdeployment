@@ -28,6 +28,7 @@ First, we'll need to do some setup.
 
     >>> import zc.zk
     >>> zk = zc.zk.ZK('zookeeper:2181')
+    >>> svn_url = 'svn+ssh://svn.zope.com/repos/main/home/jim/zkdeployment'
     >>> svn_info = """Path: .
     ... URL: svn+ssh://svn.zope.com/repos/main/home/jim/zkdeployment
     ... Repository Root: svn+ssh://svn.zope.com/repos/main
@@ -52,20 +53,35 @@ And import it:
     >>> import mock
     >>> zk.import_tree(tree, trim=True)
     >>> svn_cmd_patcher = mock.patch('zc.zkdeployment.sync.svn_cmd')
+
+    >>> def assert_(cond, *args):
+    ...     if not cond:
+    ...         raise AssertionError(*args)
+    >>> def check_url(url):
+    ...     assert_(url ==
+    ...             'svn+ssh://svn.zope.com/repos/main/home/jim/zkdeployment',
+    ...             url)
+
     >>> def fake_svn(*args):
-    ...     if args[0] == 'info':
+    ...     command, url = args
+    ...     if command == 'info':
+    ...         check_url(url)
     ...         return svn_info
-    ...     if args[0] == 'ls':
-    ...         return ['foo.zk', 'bar.zk', 'baz.txt']
-    ...     if args[0] == 'cat':
-    ...         return '/foo\n  /bar'
+    ...     if command == 'ls':
+    ...         check_url(url)
+    ...         return '\n'.join(['foo.zk', 'bar.zk', 'baz.txt'])+'\n'
+    ...     if command == 'cat':
+    ...         url, name = url.rsplit('/', 1)
+    ...         check_url(url)
+    ...         assert_(name.endswith('.zk'), name)
+    ...         return '/%s\n  /bar' % name[:-3]
     >>> svn_cmd_mock = svn_cmd_patcher.start()
     >>> svn_cmd_mock.side_effect = fake_svn
 
 If it doesn't detect a difference, nothing will be done.
 
     >>> svn_info = svn_info.replace('VERSION', '123')
-    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=False)
+    >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
     INFO VCS Version: 123
     INFO ZK Version: 123
 
@@ -73,24 +89,54 @@ If it does detect a difference, it will attempt to resolve it by importing the
 tree under version control.
 
     >>> svn_info = svn_info.replace('123', '124')
-    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=False)
+    >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
     INFO VCS Version: 124
     INFO ZK Version: 123
     INFO Version mismatch detected, resyncing
     INFO Importing foo.zk
     INFO Importing bar.zk
 
+And the tree is updated:
+
+    >>> zk.print_tree()
+    /ZktoolsLocks
+      string_value = 'zktools ZLock dir'
+      /,hosts
+        string_value = 'lock'
+    /bar
+      /bar
+    /cust
+      /someapp
+        /cms : z4m
+          version = u'1.0.0'
+          /deploy
+            /424242424242
+        /monitor : z4mmonitor
+          version = u'1.1.0'
+          /deploy
+            /424242424242
+    /cust2
+      /someapp
+        /cms : z4m
+          version = u'1.0.0'
+          /deploy
+            /424242424242
+    /foo
+      /bar
+    /hosts
+      version = 124
+
 If we try to run it again, nothing will happen, since the ZK version now
 matches the VCS version.
 
-    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=False)
+    >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
     INFO VCS Version: 124
     INFO ZK Version: 124
 
 Let's bump the version again, and this time try a dry-run.
 
     >>> svn_info = svn_info.replace('124', '125')
-    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=True)
+    >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=True)
     INFO VCS Version: 125
     INFO ZK Version: 124
     INFO Version mismatch detected, resyncing
@@ -100,7 +146,7 @@ Let's bump the version again, and this time try a dry-run.
 It didn't do anything, so if we run it again, it will show that there
 are still pending changes.
 
-    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=True)
+    >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=True)
     INFO VCS Version: 125
     INFO ZK Version: 124
     INFO Version mismatch detected, resyncing
@@ -109,7 +155,7 @@ are still pending changes.
 
 Let's finish up and run it for real.
 
-    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=False)
+    >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
     INFO VCS Version: 125
     INFO ZK Version: 124
     INFO Version mismatch detected, resyncing
@@ -134,7 +180,7 @@ of which is still out of date::
 Now we'll try to sync:
 
     >>> svn_info = svn_info.replace('125', '126')
-    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=False)
+    >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
     INFO VCS Version: 126
     INFO ZK Version: 125
     ERROR Version mismatch detected, can't resync since host 1.2.3.5 has not
@@ -143,7 +189,7 @@ Now we'll try to sync:
 If we run with the `force` flag, we'll do the deployment anyway, since we
 presumably know what we're doing.
 
-    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=False,
+    >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False,
     ...     force=True)
     INFO VCS Version: 126
     INFO ZK Version: 125
@@ -171,7 +217,7 @@ We'll steal the lock and try to do the sync now:
     >>> import zktools.locking
     >>> cluster_lock = zktools.locking.ZkLock(zk, ',hosts')
     >>> with zktools.locking.ZkLock(zk, ',hosts'):
-    ...     zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=False)
+    ...     zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
     INFO VCS Version: 126
     INFO ZK Version: 125
     ERROR Refused to update zookeeper tree, couldn't obtain cluster lock
@@ -179,7 +225,7 @@ We'll steal the lock and try to do the sync now:
 If we try again without the stolen lock, it'll acquire it just fine and do the
 import.
 
-    >>> zc.zkdeployment.sync.sync_with_canonical('svn_url', dry_run=False)
+    >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
     INFO VCS Version: 126
     INFO ZK Version: 125
     INFO Version mismatch detected, resyncing

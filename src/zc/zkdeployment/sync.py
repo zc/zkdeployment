@@ -4,11 +4,15 @@ import urlparse
 import zc.zk
 import zc.zkdeployment
 import zktools.locking
+import zookeeper
 
 SVN_CMD = 'svn'
 ZK_LOCATION = 'zookeeper:2181'
 
 logger = logging.getLogger(__name__)
+
+# Hack, zktools.locking calls zookeeper.set_log_stream, which messes up zk.
+zookeeper.set_log_stream = lambda f: None
 
 
 def svn_cmd(cmd, url):
@@ -46,16 +50,17 @@ def sync_with_canonical(url, dry_run=False, force=False):
         try:
             if cluster_lock.acquire(0):
                 logger.info("Version mismatch detected, resyncing")
-                file_list = [fi for fi in svn_cmd('ls', url)
+
+                file_list = [fi for fi in svn_cmd('ls', url).strip().split('\n')
                              if fi.endswith('.zk')]
                 # Import changes
                 for fi in file_list:
                     output = ' '.join(('Importing', fi))
+                    contents = svn_cmd('cat', '%s/%s' % (url,  fi))
                     if dry_run:
                         output += ' (dry run, no action taken)'
                     logger.info(output)
                     if not dry_run:
-                        contents = svn_cmd('cat', urlparse.urljoin(url, fi))
                         zk.import_tree(contents)
                 # bump version number
                 if not dry_run:
@@ -68,6 +73,7 @@ def sync_with_canonical(url, dry_run=False, force=False):
 
 
 def main():
+    logging.basicConfig(level=logging.INFO)
     parser = optparse.OptionParser()
     parser.add_option('-d', '--dry-run', dest='dry_run',
         action='store_true',
