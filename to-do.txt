@@ -1,30 +1,20 @@
 
-- Figure out some more what do do w keys :)
+- remove /opt/APP diectory when switching from svn to rpm.
 
-  - Leverage host-specific ssh config to specify key files
+- check that rpm is actually installed by checking installed version.
 
-  - Leverage global host keys
+  amongst the many way that yum sucks is that when it can't find a
+  requested package, it exits with a 0 exit status.
 
-  - Refactor/test buildoutsftp
+- zc.zk
 
-- ZRS meta recipe needs to be merged, new rpm
+  - Fix property links:
 
-- Verify that agent errors if process doesn't start fast enough.
+    - get_properties
+    - dict(props)
+    - iter(props)
 
-- urlshortener meta recipe set zdaemon start-test-program
-
-Really nice to have sooner rather than later
---------------------------------------------
-
-- A way to run once, independent of a cluster version change
-
-  This is useful when debugging and when reconvering from errors.
-  (Although, when recovering from errors, you should be able to forse
-  a run by just restarting.
-
-- verbose mode in which all command outout is output.
-
-  Bonus: use select to read output from sub-commands to allow output sooner.
+  - option on import to ignore ephemeral nodes
 
 Later
 -----
@@ -32,19 +22,11 @@ Later
 - Fix zimagent to remove monitors when agent.d files are removed and
   add monitors when agent.d files are added **without restart**!!!
 
-- One-off run of hostagent
-
-  - Always converges, doesn't care about cluster version.
-
-  - Makes testing/staging easier.
-
 - zc.zk logging snafus:
 
   - exceptions on shut down
 
-- why is zktools so fricking slow.
-
-  - why do tests open so many connections to zookeeper
+  - dealing with replacement of the log file.
 
 - Include log file in zdaemon configs, so that the logtail command works.
 
