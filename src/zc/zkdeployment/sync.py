@@ -61,7 +61,7 @@ def sync_with_canonical(url, dry_run=False, force=False):
                         output += ' (dry run, no action taken)'
                     logger.info(output)
                     if not dry_run:
-                        zk.import_tree(contents)
+                        zk.import_tree(contents, trim=True)
                 # bump version number
                 if not dry_run:
                     zk.properties('/hosts').update(version=svn_version)

@@ -62,6 +62,10 @@ And import it:
     ...             'svn+ssh://svn.zope.com/repos/main/home/jim/zkdeployment',
     ...             url)
 
+    >>> foo_zk = '/foo\n  /bar'
+    >>> bar_zk = '/bar\n  /bar\n  /ham'
+    >>> baz_zk = '/baz\n  /bar'
+
     >>> def fake_svn(*args):
     ...     command, url = args
     ...     if command == 'info':
@@ -74,7 +78,7 @@ And import it:
     ...         url, name = url.rsplit('/', 1)
     ...         check_url(url)
     ...         assert_(name.endswith('.zk'), name)
-    ...         return '/%s\n  /bar' % name[:-3]
+    ...         return globals()[name.replace('.', '_')]
     >>> svn_cmd_mock = svn_cmd_patcher.start()
     >>> svn_cmd_mock.side_effect = fake_svn
 
@@ -92,6 +96,50 @@ tree under version control.
     >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
     INFO VCS Version: 124
     INFO ZK Version: 123
+    INFO Version mismatch detected, resyncing
+    INFO Importing foo.zk
+    INFO Importing bar.zk
+
+And the tree is updated:
+
+    >>> zk.print_tree()
+    /ZktoolsLocks
+      string_value = 'zktools ZLock dir'
+      /,hosts
+        string_value = 'lock'
+    /bar
+      /bar
+      /ham
+    /cust
+      /someapp
+        /cms : z4m
+          version = u'1.0.0'
+          /deploy
+            /424242424242
+        /monitor : z4mmonitor
+          version = u'1.1.0'
+          /deploy
+            /424242424242
+    /cust2
+      /someapp
+        /cms : z4m
+          version = u'1.0.0'
+          /deploy
+            /424242424242
+    /foo
+      /bar
+    /hosts
+      version = 124
+
+Let's delete something from one of the trees, and make sure it
+disappears:
+
+    >>> bar_zk = '/bar\n  /bar'
+    >>> svn_info = svn_info.replace('124', '125')
+
+    >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
+    INFO VCS Version: 125
+    INFO ZK Version: 124
     INFO Version mismatch detected, resyncing
     INFO Importing foo.zk
     INFO Importing bar.zk
@@ -124,21 +172,21 @@ And the tree is updated:
     /foo
       /bar
     /hosts
-      version = 124
+      version = 125
 
 If we try to run it again, nothing will happen, since the ZK version now
 matches the VCS version.
 
     >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
-    INFO VCS Version: 124
-    INFO ZK Version: 124
+    INFO VCS Version: 125
+    INFO ZK Version: 125
 
 Let's bump the version again, and this time try a dry-run.
 
-    >>> svn_info = svn_info.replace('124', '125')
+    >>> svn_info = svn_info.replace('125', '126')
     >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=True)
-    INFO VCS Version: 125
-    INFO ZK Version: 124
+    INFO VCS Version: 126
+    INFO ZK Version: 125
     INFO Version mismatch detected, resyncing
     INFO Importing foo.zk (dry run, no action taken)
     INFO Importing bar.zk (dry run, no action taken)
@@ -147,8 +195,8 @@ It didn't do anything, so if we run it again, it will show that there
 are still pending changes.
 
     >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=True)
-    INFO VCS Version: 125
-    INFO ZK Version: 124
+    INFO VCS Version: 126
+    INFO ZK Version: 125
     INFO Version mismatch detected, resyncing
     INFO Importing foo.zk (dry run, no action taken)
     INFO Importing bar.zk (dry run, no action taken)
@@ -156,8 +204,8 @@ are still pending changes.
 Let's finish up and run it for real.
 
     >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
-    INFO VCS Version: 125
-    INFO ZK Version: 124
+    INFO VCS Version: 126
+    INFO ZK Version: 125
     INFO Version mismatch detected, resyncing
     INFO Importing foo.zk
     INFO Importing bar.zk
@@ -167,11 +215,11 @@ update, you'll get an error.  Here, we'll set up a tree with two hosts, one
 of which is still out of date::
 
    /hosts
-     version = 125
+     version = 126
      /1.2.3.4
-       version = 125
+       version = 126
      /1.2.3.5
-       version = 124
+       version = 125
 
 .. -> tree
 
@@ -179,20 +227,20 @@ of which is still out of date::
 
 Now we'll try to sync:
 
-    >>> svn_info = svn_info.replace('125', '126')
+    >>> svn_info = svn_info.replace('126', '127')
     >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
-    INFO VCS Version: 126
-    INFO ZK Version: 125
+    INFO VCS Version: 127
+    INFO ZK Version: 126
     ERROR Version mismatch detected, can't resync since host 1.2.3.5 has not
-    converged (124 -> 125)
+    converged (125 -> 126)
 
 If we run with the `force` flag, we'll do the deployment anyway, since we
 presumably know what we're doing.
 
     >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False,
     ...     force=True)
-    INFO VCS Version: 126
-    INFO ZK Version: 125
+    INFO VCS Version: 127
+    INFO ZK Version: 126
     INFO Version mismatch detected, resyncing
     INFO Importing foo.zk
     INFO Importing bar.zk
@@ -201,11 +249,11 @@ If we try to sync while another syncer is already updating the tree, we'll get
 an error::
 
    /hosts
-     version = 125
+     version = 126
      /1.2.3.4
-       version = 125
+       version = 126
      /1.2.3.5
-       version = 125
+       version = 126
 
 .. -> tree
 
@@ -213,21 +261,21 @@ an error::
 
 We'll steal the lock and try to do the sync now:
 
-    >>> svn_info = svn_info.replace('125', '126')
+    >>> svn_info = svn_info.replace('126', '127')
     >>> import zktools.locking
     >>> cluster_lock = zktools.locking.ZkLock(zk, ',hosts')
     >>> with zktools.locking.ZkLock(zk, ',hosts'):
     ...     zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
-    INFO VCS Version: 126
-    INFO ZK Version: 125
+    INFO VCS Version: 127
+    INFO ZK Version: 126
     ERROR Refused to update zookeeper tree, couldn't obtain cluster lock
 
 If we try again without the stolen lock, it'll acquire it just fine and do the
 import.
 
     >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
-    INFO VCS Version: 126
-    INFO ZK Version: 125
+    INFO VCS Version: 127
+    INFO ZK Version: 126
     INFO Version mismatch detected, resyncing
     INFO Importing foo.zk
     INFO Importing bar.zk
