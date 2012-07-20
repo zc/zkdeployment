@@ -1,6 +1,4 @@
 
-- remove /opt/APP diectory when switching from svn to rpm.
-
 - check that rpm is actually installed by checking installed version.
 
   amongst the many way that yum sucks is that when it can't find a
@@ -21,6 +19,8 @@
   Make one if there isn't one prior to calling zookeeper-deploy.
 
 - The default command timeout isn't long enough to build-out z4m.
+
+- We seem to be installing the ZRS rpm over and over on jim-c5.
 
 
 Later
