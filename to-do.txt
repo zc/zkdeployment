@@ -16,6 +16,13 @@
 
   - option on import to ignore ephemeral nodes
 
+- Don't fail of there isn't an /etc/APP directory.
+
+  Make one if there isn't one prior to calling zookeeper-deploy.
+
+- The default command timeout isn't long enough to build-out z4m.
+
+
 Later
 -----
 
