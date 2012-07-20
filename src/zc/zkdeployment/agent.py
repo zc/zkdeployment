@@ -249,6 +249,7 @@ class Agent(object):
             for rpm_name, version in sorted(deploy_versions.items()):
                 rpm_version = self.get_rpm_version(rpm_name)
                 if rpm_version != version:
+                    opt_dir_name = rpm_name
                     if version is DONT_CARE:
                         if rpm_version is not None:
                             continue # single-version app, is already installed
@@ -269,10 +270,16 @@ class Agent(object):
                     else:
                         rpm_name += '-' + version
 
+                    if os.path.exists(self._path('opt', opt_dir_name, '.svn')):
+                        # We used svn before. Clean it up.
+                        logger.info("Removing svn checkout " + opt_dir_name)
+                        shutil.rmtree(self._path('opt', opt_dir_name))
+
                     if not clean:
                         zc.zkdeployment.run_command('yum -y clean all'.split(),
                                 verbose=self.verbose)
                         clean = True
+
                     logger.info("Installing RPM " + rpm_name)
                     zc.zkdeployment.run_command(
                         ['yum', '-y', 'install', rpm_name],

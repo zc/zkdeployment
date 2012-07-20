@@ -1088,6 +1088,93 @@ Now the software will get removed:
     /etc/init.d/zimagent restart
     INFO Done deploying version 24
 
+If we switch from svn to rpm, the svn directory will be removed first::
+
+  /cust
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+      /rewriter : pywrite
+        svn_location = 'svn+ssh://svn.zope.com/repos/main/pywrite/trunk'
+        /deploy
+          /cache
+  /cust2
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 25
+    INFO Checkout pywrite (svn+ssh://svn.zope.com/repos/main/pywrite/trunk)
+    ...
+
+::
+
+  /cust
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+      /rewriter : pywrite
+        version = '3.0'
+        /deploy
+          /cache
+  /cust2
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 26
+    INFO Removing svn checkout pywrite
+    yum -y clean all
+    INFO Installing RPM pywrite-3.0
+    ...
+
+Now, remove the deployment again::
+
+  /cust
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+      /rewriter : pywrite
+        svn_location = 'svn+ssh://svn.zope.com/repos/main/pywrite/trunk'
+        /deploy
+  /cust2
+    /someapp
+      /cache : squid
+        version = '2.0'
+        /deploy
+          /cache
+
+.. -> tree
+
+
+
+    >>> zk.import_tree(tree, trim=True)
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 27
+    ...
+
+
 If a deployment takes too long, it will timeout and raise an exception.
 
 We'll set a quick interval here for testing:
@@ -1125,7 +1212,7 @@ Now let's deploy:
 
     >>> bump_version(wait=5) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
-    INFO Deploying version 25
+    INFO Deploying version 28
     yum -q list installed squid
     yum -y clean all
     INFO Installing RPM tooslow-1.0
@@ -1139,7 +1226,7 @@ Now let's deploy:
     Traceback (most recent call last):
     ...
     RuntimeError: Command failed: .../opt/tooslow/bin/zookeeper-deploy /cust/someapp/slowapp 0, took too long
-    CRITICAL FAILED deploying version 25
+    CRITICAL FAILED deploying version 28
 
     >>> zc.zkdeployment.TIMEOUT_INTERVAL = old_interval
 
@@ -1169,7 +1256,7 @@ And a deployment:
 
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
-    INFO Deploying version 26
+    INFO Deploying version 29
     yum -q list installed squid
     INFO Installing squid /cust/someapp/cache 0
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
@@ -1179,7 +1266,7 @@ And a deployment:
     yum -y remove tooslow
     INFO Restarting zimagent
     /etc/init.d/zimagent restart
-    INFO Done deploying version 26
+    INFO Done deploying version 29
 
 
 Monitoring
@@ -1226,7 +1313,7 @@ If the host is out of sync with the cluster, we'll get a warning.
     ...     monitor.send_state()
     /zkdeploy/agent
     WARNING
-    Host and cluster are out of sync (host: 1, cluster: 26)
+    Host and cluster are out of sync (host: 1, cluster: 29)
 
 If we go longer than 15 minutes and the host is still not in sync with the
 cluster, we'll start sending critical events.
@@ -1289,12 +1376,12 @@ We will get an error.
 
     >>> bump_version() # doctest: +ELLIPSIS
     INFO ============================================================
-    INFO Deploying version 27
+    INFO Deploying version 30
     ERROR deploying
     Traceback (most recent call last):
     ...
     ValueError: Found a host-based deployment at /cust/someapp/cms/deploy/424242424242 but the host has a role, cache.
-    CRITICAL FAILED deploying version 27
+    CRITICAL FAILED deploying version 30
 
    >>> monitor.send_state()
     /zkdeploy/agent
@@ -1327,7 +1414,7 @@ When we send our state, we'll get an INFO message:
 
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
-    INFO Deploying version 28
+    INFO Deploying version 31
     yum -q list installed squid
     INFO Installing squid /cust/someapp/cache 0
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
@@ -1335,7 +1422,7 @@ When we send our state, we'll get an INFO message:
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     INFO Restarting zimagent
     /etc/init.d/zimagent restart
-    INFO Done deploying version 28
+    INFO Done deploying version 31
     >>> monitor.send_state()
     /zkdeploy/agent
     INFO
@@ -1424,14 +1511,14 @@ error:
     >>> os.remove(os.path.join('etc', 'init.d', 'zimagent'))
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
-    INFO Deploying version 29
+    INFO Deploying version 32
     yum -q list installed squid
     INFO Installing squid /cust/someapp/cache 0
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
     INFO Installing squid /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     WARNING No zimagent. I hope you're screwing around. :)
-    INFO Done deploying version 29
+    INFO Done deploying version 32
 
 
 .. tear down
