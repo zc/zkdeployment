@@ -1,6 +1,6 @@
 Name: zkdeployment
-Version: 0.1.0
-Release: 2
+Version: 0
+Release: 1
 
 Summary: ZooKeeper Deployment
 Group: Applications/ZIM
