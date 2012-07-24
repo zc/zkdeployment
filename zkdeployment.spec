@@ -1,11 +1,11 @@
 Name: zkdeployment
-Version: 0
-Release: 1
+Version: 0.1.0
+Release: 2
 
 Summary: ZooKeeper Deployment
 Group: Applications/ZIM
 Requires: cleanpython26
-Requires: zcuser-zope
+Requires: sbo
 BuildRequires: cleanpython26
 %define python /opt/cleanpython26/bin/python
 
@@ -47,14 +47,58 @@ rm -rf %{buildroot}
 rm -rf $RPM_BUILD_DIR/%{source}
 
 %post
-if [[ ! -d /home/databases ]]
-then
-   mkdir /home/databases
-fi
 if [[ ! -d /etc/%{name} ]]
 then
    mkdir /etc/%{name}
 fi
+
+echo "
+[buildout]
+parts = rc agent.cfg
+
+[deployment]
+recipe = zc.recipe.deployment
+name = %{name}
+user = root
+
+[rc]
+recipe = zc.recipe.rhrc
+deployment = deployment
+parts = agent
+process-management = true
+chkconfig = 345 90 10
+
+[agent]
+recipe = zc.zdaemonrecipe
+deployment = deployment
+program = \${buildout:bin-directory}/agent
+zdaemon.conf =
+  <runner>
+    logfile \${deployment:log-directory}/agent.log
+  </runner>
+
+[agent.cfg]
+recipe = zc.recipe.deployment:configuration
+text = 
+  \${deployment:log-directory}/agent.log {
+    rotate 5
+    weekly
+    compress
+    postrotate
+      \${deployment:rc-directory} \
+          -C \${deployment:rc-directory}/agent-zdaemon.conf \
+          reopen_transcript
+    endscript
+  }
+
+" > /etc/%{name}/zkdeployment.cfg
+
+/usr/local/bin/sbo zkdeployment
+
+%preun
+/usr/local/bin/sbo -u zkdeployment
+rm -rf /etc/%{name} /var/log/%{name}
+
 
 %files
 %defattr(-, root, root)
