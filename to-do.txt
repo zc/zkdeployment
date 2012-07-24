@@ -1,5 +1,5 @@
 
-- Record fqdn and role in zk
+- Agent record fqdn and role in zk
 
 - Maybe make host nodes ephemeral.  This would require logging host version
   to disk and loading it on startup. Perhaps /etc/zim/host-version
@@ -8,6 +8,8 @@
 
   amongst the many way that yum sucks is that when it can't find a
   requested package, it exits with a 0 exit status.
+
+- Need a --force/-f option in agent.
 
 - zc.zk
 
