@@ -1,4 +1,7 @@
 
+- Agent: when staging, we'll typically need to install dev rpms and
+  other dependencies that would normallt appear in the spec file.
+
 - Agent isn't recognizing that rpm is installed.
 
 - Agent record fqdn and role in zk
