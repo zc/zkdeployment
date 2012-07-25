@@ -1,4 +1,8 @@
 
+- Agent: need configurable timeout.
+
+  Need very long timeout for stage-build
+
 - Agent: when staging, we'll typically need to install dev rpms and
   other dependencies that would normallt appear in the spec file.
 
