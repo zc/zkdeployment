@@ -29,6 +29,17 @@
 
 - We seem to be installing the ZRS rpm over and over on jim-c5.
 
+- zc.recipe.rhrc: process management needs better error handling.
+
+  If the process failes to start, a stop command should be issued.
+  The reason for issueing the stop command is that the process may
+  have started, but be running incorrectly and times out.  In this
+  case, we want to stop it if it's running.
+
+  (Of course, we should make sure other bits are cleaned up too, if
+  they aren't already.)
+
+
 
 Later
 -----
