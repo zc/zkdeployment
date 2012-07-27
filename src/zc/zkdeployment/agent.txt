@@ -1428,6 +1428,30 @@ error:
     INFO Done deploying version 30
 
 
+Handling missing /etc/APP directories
+=====================================
+
+Sometimes, especially when installing stage builds, there are failures
+that prevent creation of an /etc directory after installing an RPM.
+To illustrate, we'll create a bogus application in /opt:
+
+    >>> os.makedirs(os.path.join('opt', 'badapp', '.svn'))
+    >>> os.makedirs(os.path.join('opt', 'badapp', 'bin'))
+    >>> open(os.path.join('opt', 'badapp', 'bin', 'zookeeper-deploy'),
+    ...      'w').close()
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 31
+    yum -q list installed squid
+    INFO Installing squid /cust/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust/someapp/cache 0
+    INFO Installing squid /cust2/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust2/someapp/cache 0
+    INFO Removing svn checkout badapp
+    WARNING No zimagent. I hope you're screwing around. :)
+    INFO Done deploying version 31
+
+
 .. tear down
 
     >>> patcher.stop()

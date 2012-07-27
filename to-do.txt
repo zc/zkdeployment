@@ -22,10 +22,6 @@
 
   - option on import to ignore ephemeral nodes
 
-- Don't fail of there isn't an /etc/APP directory.
-
-  Make one if there isn't one prior to calling zookeeper-deploy.
-
 - We seem to be installing the ZRS rpm over and over on jim-c5.
 
 - zc.recipe.rhrc: process management needs better error handling.

@@ -134,7 +134,10 @@ class Agent(object):
                 self.root, 'opt', app, 'bin', 'zookeeper-deploy')
             if not os.path.exists(script):
                 continue
-            for name in os.listdir(os.path.join(self.root, 'etc', app)):
+            etcpath = os.path.join(self.root, 'etc', app)
+            if not os.path.isdir(etcpath):
+                continue
+            for name in os.listdir(etcpath):
                 if name.endswith('.deployed'):
                     path, n = ('/' + name[:-9].replace(',', '/')).rsplit(
                         '.', 1)
@@ -190,7 +193,10 @@ class Agent(object):
             self.uninstall_rpm(opt_name)
 
     def update_deployment(self, deployment, remove=False):
-        script = os.path.join(self.root, 'opt', deployment.app, 'bin',
+        app_name = deployment.app
+        if not os.path.exists(self._path('etc', app_name)):
+            os.mkdir(self._path('etc', app_name))
+        script = os.path.join(self.root, 'opt', app_name, 'bin',
             'zookeeper-deploy')
         cmd_list = [script]
         if remove:
@@ -200,13 +206,13 @@ class Agent(object):
         action = 'Installing'
         if remove:
             action = 'Removing'
-        logger.info(' '.join([action, deployment.app, deployment.path,
+        logger.info(' '.join([action, app_name, deployment.path,
                               str(deployment.n)]))
         zc.zkdeployment.run_command(cmd_list,
                 verbose=self.verbose)
         if remove:
             deployed = self._path(
-                'etc', deployment.app,
+                'etc', app_name,
                 deployment.path[1:].replace('/', ',') +
                 (".%s.deployed" % deployment.n))
             if os.path.exists(deployed):
@@ -264,8 +270,6 @@ class Agent(object):
                         zc.zkdeployment.run_command(
                             [self._path('opt', rpm_name, 'stage-build')],
                             verbose=self.verbose)
-                        if not os.path.exists(self._path('etc', rpm_name)):
-                            os.mkdir(self._path('etc', rpm_name))
                         continue
                     else:
                         rpm_name += '-' + version
