@@ -1,4 +1,7 @@
 
+- zdaemon: when a program dies on startup, the exit status is 0. It
+  should be non-zeo so as not to hide a failure to start.
+
 - Agent: need configurable timeout.
 
   Need very long timeout for stage-build
