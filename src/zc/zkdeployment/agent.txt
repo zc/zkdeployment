@@ -790,7 +790,7 @@ output.
     yum -q list installed squid
     INFO Command succeeded: [u'yum', u'-q', u'list', u'installed', u'squid']
       Installed Packages
-      squid 	2.0 	installed
+      squid 	2.0-1 	installed
     INFO Installing squid /cust/someapp/cache 0
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
     INFO Command succeeded: [u'.../opt/squid/bin/zookeeper-deploy', '/cust/someapp/cache', '0']

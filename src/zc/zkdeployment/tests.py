@@ -178,7 +178,7 @@ def subprocess_popen(args, stdout=None, stderr=None):
                         opt={
                             package: dict(
                                 bin={'zookeeper-deploy': ''},
-                                version=version,
+                                version=version+'-1',
                                 )},
                         ))
             elif command == 'remove':

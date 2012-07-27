@@ -166,7 +166,7 @@ class Agent(object):
             return None
         for line in output.splitlines():
             if line.startswith(rpm_name):
-                return line.split()[1]
+                return line.split()[1].split('-', 1)[0]
 
     def _uninstall(self, rpm_name):
         if os.path.exists(self._path('opt', rpm_name)):
