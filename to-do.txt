@@ -5,13 +5,6 @@
 - zdaemon: when a program dies on startup, the exit status is 0. It
   should be non-zeo so as not to hide a failure to start.
 
-- Agent: need configurable timeout.
-
-  Need very long timeout for stage-build
-
-- Agent: when staging, we'll typically need to install dev rpms and
-  other dependencies that would normallt appear in the spec file.
-
 - Agent isn't recognizing that rpm is installed.
 
 - Agent record fqdn and role in zk
@@ -23,8 +16,6 @@
 
   amongst the many way that yum sucks is that when it can't find a
   requested package, it exits with a 0 exit status.
-
-- Need a --force/-f option in agent.
 
 - zc.zk
 
@@ -40,8 +31,6 @@
 
   Make one if there isn't one prior to calling zookeeper-deploy.
 
-- The default command timeout isn't long enough to build-out z4m.
-
 - We seem to be installing the ZRS rpm over and over on jim-c5.
 
 - zc.recipe.rhrc: process management needs better error handling.
@@ -55,9 +44,17 @@
   they aren't already.)
 
 
-
 Later
 -----
+
+- Agent: when staging, we'll typically need to install dev rpms and
+  other dependencies that would normallt appear in the spec file.
+
+  Workaround: have stage-build insert rpms. <shrug>
+
+- Need a --force/-f option in agent.
+
+
 
 - Fix zimagent to remove monitors when agent.d files are removed and
   add monitors when agent.d files are added **without restart**!!!
