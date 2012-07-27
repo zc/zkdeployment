@@ -1,11 +1,6 @@
 
-- ISSUE: If we screw up and deploy something that's broken enough to
-  not start, we should probably stop deploying it.
-
 - zdaemon: when a program dies on startup, the exit status is 0. It
   should be non-zeo so as not to hide a failure to start.
-
-- Agent isn't recognizing that rpm is installed.
 
 - Agent record fqdn and role in zk
 
@@ -43,6 +38,9 @@
   (Of course, we should make sure other bits are cleaned up too, if
   they aren't already.)
 
+
+- ISSUE: If we screw up and deploy something that's broken enough to
+  not start, we should probably stop deploying it.
 
 Later
 -----
