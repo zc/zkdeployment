@@ -122,7 +122,8 @@ installation script for everything that's installed:
     >>> hosts_properties = zk.properties('/hosts')
     >>> import time
     >>> version = 1
-    >>> def bump_version(wait=1):
+    >>> wait = .05
+    >>> def bump_version():
     ...     global version
     ...     version += 1
     ...     hosts_properties.update(version=version)
@@ -822,7 +823,7 @@ If we bump the version, the agent won't do a deployment:
 
 Let's switch back to an active agent:
 
-    >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(.5)
+    >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(wait)
     INFO Agent starting, cluster 18, host 17
     INFO ============================================================
     INFO Deploying version 18
@@ -972,7 +973,7 @@ version::
 
 The agent updates itself to version 19.
 
-    >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(.5)
+    >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(wait)
     INFO Agent starting, cluster 19, host None
     INFO ============================================================
     INFO Deploying version 19
