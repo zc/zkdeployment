@@ -1,7 +1,4 @@
 
-- zdaemon: when a program dies on startup, the exit status is 0. It
-  should be non-zeo so as not to hide a failure to start.
-
 - Agent record fqdn and role in zk
 
 - Maybe make host nodes ephemeral.  This would require logging host version
@@ -70,4 +67,4 @@ Later
     don't want a local host agent to remove an RPM needed for AWS, but
     not locally, and the other way around.
 
-- OS and move to github
+- OS and move to bitbucket
