@@ -42,6 +42,9 @@ initial_file_system = dict(
         zmh = dict(
             pxemac = '424242424242\n',
             ),
+        zim = dict(
+            host_version = '1',
+            ),
         z4mmonitor = {
             'cust,someapp,monitor.0.deployed': '',
             },
@@ -85,9 +88,6 @@ def buildfs(tree, base=''):
 initial_tree = """
 /hosts
   version = 1
-  /424242424242
-    name = 'host42'
-    version = 1
 
 /cust
   /someapp

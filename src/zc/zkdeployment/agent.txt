@@ -707,7 +707,6 @@ add a cache server config::
 and give the host a role:
 
     >>> import os
-    >>> os.mkdir('etc/zim')
     >>> with open('etc/zim/role', 'w') as f:
     ...     f.write('cache\n')
 
@@ -959,22 +958,63 @@ We're done with this agent.
 
     >>> agent.close()
 
-If an agent can't find its identifier in the zookeeper tree, it will add one,
-and immediately perform any deployments needed to conform to the current
-version::
+When the agent closes, it's host node goes away:
 
+    >>> zk.print_tree()
+    /ZktoolsLocks
+      string_value = 'zktools ZLock dir'
+      /,cust,someapp,acrank
+        string_value = 'lock'
+      /,cust,someapp,cache
+        string_value = 'lock'
+      /,cust,someapp,cms
+        string_value = 'lock'
+      /,cust2,someapp,cache
+        string_value = 'lock'
+      /,cust2,someapp,cms
+        string_value = 'lock'
+      /,cust2,someapp,monitor
+        string_value = 'lock'
+    /cust
+      /someapp
+        /cache : squid
+          version = u'2.0'
+          /deploy
+            /cache
+    /cust2
+      /someapp
+        /cache : squid
+          version = u'2.0'
+          /deploy
+            /cache
+    /hosts
+      version = 21
+
+But the version is saved in /etc/zim/host_version:
+
+    >>> with open('etc/zim/host_version') as f:
+    ...     print f.read()
+    21
+
+When we restart the agent, it will load it's version and update if it
+needs to.
+
+Let's set the cluster version to something different::
 
     /hosts
       version = 19
 
 .. -> tree
 
+Note that versions don't have to be increasing. Thert don't really
+have to be numbers. :)
+
     >>> zk.import_tree(tree, trim=True)
 
 The agent updates itself to version 19.
 
     >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(wait)
-    INFO Agent starting, cluster 19, host None
+    INFO Agent starting, cluster 19, host 21
     INFO ============================================================
     INFO Deploying version 19
     yum -q list installed squid
@@ -1451,6 +1491,44 @@ To illustrate, we'll create a bogus application in /opt:
     WARNING No zimagent. I hope you're screwing around. :)
     INFO Done deploying version 31
 
+Handling legacy zk databases:
+
+    >>> agent.close()
+
+We used to use non-ephemeral nodes.  If the agent starts and sees a
+node for itself, it will read the version and convert the node to an
+emphemeral node::
+
+    /hosts
+      version = 1
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+    >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(wait)
+    INFO Agent starting, cluster 1, host 31
+    INFO ============================================================
+    INFO Deploying version 1
+    yum -q list installed squid
+    INFO Installing squid /cust/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust/someapp/cache 0
+    INFO Installing squid /cust2/someapp/cache 0
+    squid/bin/zookeeper-deploy /cust2/someapp/cache 0
+    WARNING No zimagent. I hope you're screwing around. :)
+    INFO Done deploying version 1
+
+    >>> zk.print_tree('/hosts')
+    /hosts
+      version = 1
+      /424242424242
+        name = u'host42'
+        role = u'cache'
+        version = 1
+
+    >>> agent.close()
+    >>> zk.print_tree('/hosts')
+    /hosts
+      version = 1
 
 .. tear down
 

@@ -1,5 +1,6 @@
 import collections
 import datetime
+import json
 import logging
 import optparse
 import os
@@ -27,6 +28,8 @@ PXEMAC_LOCATION = 'etc/zmh/pxemac'
 
 ROLE_LOCATION = 'etc/zim/role'
 
+VERSION_LOCATION = 'etc/zim/host_version'
+
 ZK_LOCATION = 'zookeeper:2181'
 
 logger = logging.getLogger(__name__)
@@ -45,25 +48,51 @@ class Agent(object):
         self.zk = zc.zk.ZK(ZK_LOCATION)
         with open(os.path.join(self.root, PXEMAC_LOCATION), 'r') as fi:
             self.host_identifier = fi.readline().strip()
-        if self.host_identifier not in self.zk.get_children('/hosts'):
-            self.zk.create('/hosts/' + self.host_identifier, '',
-                           zc.zk.OPEN_ACL_UNSAFE)
-            self.zk.properties(
-                '/hosts/' + self.host_identifier).update({'version': None})
+
+        if os.path.exists(os.path.join(self.root, VERSION_LOCATION)):
+            with open(os.path.join(self.root, VERSION_LOCATION), 'r') as fi:
+                version = json.loads(fi.readline().strip())
+        else:
+            version = None
+
+        host_path = '/hosts/'+self.host_identifier
+        if self.host_identifier in self.zk.get_children('/hosts'):
+            _, meta = self.zk.get(host_path)
+            if meta.get('ephemeralOwner'):
+                raise ValueError('Another agent is running')
+            version = self.zk.get_children(host_identifier).get(
+                'version', version)
+            self.zk.delete(host_path)
+
+        self.zk.create(
+            host_path, '', zc.zk.OPEN_ACL_UNSAFE, zookeeper.EPHEMERAL)
+
         self.host_name = socket.getfqdn()
-        self.properties = self.zk.properties('/hosts')
-        logger.info('Agent starting, cluster %s, host %s',
-                    self.cluster_version, self.version)
-        self.role = None
-        self.failing = False
+
+        host_properties = self.zk.properties(host_path)
+        host_properties.update(
+            name = self.host_name,
+            version = version,
+            )
+
         if os.path.exists(self._path(ROLE_LOCATION)):
             with open(self._path(ROLE_LOCATION)) as f:
                 self.role = f.read().strip()
+            host_properties.update(role=self.role)
+        else:
+            self.role = None
+
+        logger.info('Agent starting, cluster %s, host %s',
+                    self.cluster_version, self.version)
+        self.failing = False
 
         if run_once:
             self.deploy()
+            self.close()
         else:
-            @self.properties
+            self.hosts_properties = self.zk.properties('/hosts')
+
+            @self.hosts_properties
             def cluster_changed(properties):
                 zc.thread.Thread(self.deploy)
                 # import warnings; warnings.warn('Undebug')
@@ -313,6 +342,9 @@ class Agent(object):
 
             self.zk.properties('/hosts/' + self.host_identifier).update(
                 version=self.cluster_version)
+            with open(os.path.join(self.root, VERSION_LOCATION), 'w') as fi:
+                fi.write(json.dumps(self.cluster_version))
+
         except:
             logger.exception('deploying')
             logger.critical('FAILED deploying version %s' %

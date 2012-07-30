@@ -1,9 +1,4 @@
 
-- Agent record fqdn and role in zk
-
-- Maybe make host nodes ephemeral.  This would require logging host version
-  to disk and loading it on startup. Perhaps /etc/zim/host-version
-
 - check that rpm is actually installed by checking installed version.
 
   amongst the many way that yum sucks is that when it can't find a
