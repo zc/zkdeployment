@@ -5,7 +5,7 @@ Title Here
 Changes
 *******
 
-0.1 (yyyy-mm-dd)
+0.1 (2012-07-20)
 ================
 
 Initial release
