@@ -28,6 +28,8 @@
 - ISSUE: If we screw up and deploy something that's broken enough to
   not start, we should probably stop deploying it.
 
+- ISSUE: How do we delete customers?
+
 Later
 -----
 
