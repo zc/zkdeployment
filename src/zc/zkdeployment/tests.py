@@ -172,6 +172,11 @@ def subprocess_popen(args, stdout=None, stderr=None):
                     return FakeSubprocess(returncode=1)
                 if package == 'z4m' and version >= '4.0.0':
                     package += '-' + version
+                elif version == '666':
+                    print >> stdout, "Error: Couldn't find package %s-%s" % (
+                        package, version)
+                    return FakeSubprocess(returncode=0)
+
                 buildfs(
                     dict(
                         etc={package: {}},

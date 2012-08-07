@@ -281,10 +281,10 @@ class Agent(object):
 
             # update app versions
             clean = False
-            for rpm_name, version in sorted(deploy_versions.items()):
-                rpm_version = self.get_rpm_version(rpm_name)
+            for rpm_package_name, version in sorted(deploy_versions.items()):
+                rpm_version = self.get_rpm_version(rpm_package_name)
                 if rpm_version != version:
-                    opt_dir_name = rpm_name
+                    rpm_name = rpm_package_name
                     if version is DONT_CARE:
                         if rpm_version is not None:
                             continue # single-version app, is already installed
@@ -303,10 +303,11 @@ class Agent(object):
                     else:
                         rpm_name += '-' + version
 
-                    if os.path.exists(self._path('opt', opt_dir_name, '.svn')):
+                    if os.path.exists(
+                        self._path('opt', rpm_package_name, '.svn')):
                         # We used svn before. Clean it up.
-                        logger.info("Removing svn checkout " + opt_dir_name)
-                        shutil.rmtree(self._path('opt', opt_dir_name))
+                        logger.info("Removing svn checkout " + rpm_package_name)
+                        shutil.rmtree(self._path('opt', rpm_package_name))
 
                     if not clean:
                         zc.zkdeployment.run_command('yum -y clean all'.split(),
@@ -317,6 +318,12 @@ class Agent(object):
                     zc.zkdeployment.run_command(
                         ['yum', '-y', 'install', rpm_name],
                         verbose=self.verbose)
+
+                    rpm_version = self.get_rpm_version(rpm_package_name)
+                    if (rpm_version != version) and (version is not DONT_CARE):
+                        raise SystemError(
+                            "Failed to install %s (installed: %s)" %
+                            (rpm_name, rpm_version))
 
             # Now update/install the needed deployments
             for deployment in sorted(deployments, key=lambda d: (d.path, d.n)):

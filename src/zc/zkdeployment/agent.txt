@@ -188,6 +188,7 @@ Here, we're installing a new monitor for cust2
     yum -y clean all
     INFO Installing RPM z4mmonitor-1.1.0
     yum -y install z4mmonitor-1.1.0
+    yum -q list installed z4mmonitor
     INFO Installing z4m /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     INFO Installing z4m /cust2/someapp/cms 0
@@ -359,6 +360,7 @@ yum will install the newer version before updating the deployment.
     yum -y clean all
     INFO Installing RPM z4m-2.0.0
     yum -y install z4m-2.0.0
+    yum -q list installed z4m
     yum -q list installed z4mmonitor
     INFO Installing z4m /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
@@ -446,6 +448,7 @@ Note that now we can have different instances use different versions.
     yum -y clean all
     INFO Installing RPM z4m-4.0.0
     yum -y install z4m-4.0.0
+    yum -q list installed z4m-4.0.0
     yum -q list installed z4mmonitor
     INFO Installing z4m /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
@@ -493,6 +496,7 @@ The old rpm gets removed:
     yum -y clean all
     INFO Installing RPM z4m-5.0.0
     yum -y install z4m-5.0.0
+    yum -q list installed z4m-5.0.0
     yum -q list installed z4mmonitor
     INFO Installing z4m /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
@@ -765,6 +769,7 @@ The deployment goes through, and the host reconfigures itself as a cache.
     yum -y clean all
     INFO Installing RPM squid-2.0
     yum -y install squid-2.0
+    yum -q list installed squid
     INFO Installing squid /cust/someapp/cache 0
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
     INFO Installing squid /cust2/someapp/cache 0
@@ -906,6 +911,7 @@ Now, we'll install a cranky app::
     yum -y clean all
     INFO Installing RPM cranky-1.0
     yum -y install cranky-1.0
+    yum -q list installed cranky
     yum -q list installed squid
     INFO Installing cranky /cust/someapp/acrank 0
     cranky/bin/zookeeper-deploy /cust/someapp/acrank 0
@@ -1529,6 +1535,77 @@ emphemeral node::
     >>> zk.print_tree('/hosts')
     /hosts
       version = 1
+
+
+Don't trust yum
+===============
+
+Yum is stupid.
+
+Among the ways that yum is stupid is that when it fails to find a
+package, including a new version, it happily exits with an exit code
+of zero, so we need to check after the install that it really happened.
+
+::
+
+  /cust
+    /someapp
+      /cache : squid
+        version = '666'
+        /deploy
+          /cache
+
+.. -> tree
+
+
+    >>> zk.import_tree(tree, trim=True)
+    >>> zk.delete_recursive('/cust2') # XXX Need better way to delete customers
+    >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(wait)
+    INFO Agent starting, cluster 1, host 1
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 32
+    INFO Removing squid /cust2/someapp/cache 0
+    squid/bin/zookeeper-deploy -u /cust2/someapp/cache 0
+    yum -q list installed squid
+    yum -y clean all
+    INFO Installing RPM squid-666
+    yum -y install squid-666
+    yum -q list installed squid
+    ERROR deploying
+    Traceback (most recent call last):
+    ...
+    SystemError: Failed to install squid-666 (installed: 2.0)
+    CRITICAL FAILED deploying version 32
+
+::
+
+  /cust
+    /someapp
+      /cache : varnish
+        version = '666'
+        /deploy
+          /cache
+
+.. -> tree
+
+
+    >>> zk.import_tree(tree, trim=True)
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 33
+    INFO Removing squid /cust/someapp/cache 0
+    squid/bin/zookeeper-deploy -u /cust/someapp/cache 0
+    yum -y clean all
+    INFO Installing RPM varnish-666
+    yum -y install varnish-666
+    ERROR deploying
+    Traceback (most recent call last):
+    ...
+    SystemError: Failed to install varnish-666 (installed: None)
+    CRITICAL FAILED deploying version 33
+
+
 
 .. tear down
 

@@ -1,9 +1,4 @@
 
-- check that rpm is actually installed by checking installed version.
-
-  amongst the many way that yum sucks is that when it can't find a
-  requested package, it exits with a 0 exit status.
-
 - zc.zk
 
   - Fix property links:
