@@ -5,7 +5,7 @@ Title Here
 Changes
 *******
 
-0.2.2 (2012-08-07)
+0.2.1 (2012-08-07)
 ==================
 
 Fixed: Legacy non-ephemeral host nodes weren't handled correctly.  (No test :()
