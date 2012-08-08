@@ -266,6 +266,9 @@ def test_legacy_host_entries():
     ...     version = 1
     ... ''')
 
+    >>> import os
+    >>> os.remove(os.path.join('etc', 'zim', 'host_version'))
+
     >>> import zc.zkdeployment.agent
     >>> agent = zc.zkdeployment.agent.Agent()
     INFO Agent starting, cluster 1, host 1
