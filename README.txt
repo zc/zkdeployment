@@ -5,8 +5,13 @@ Title Here
 Changes
 *******
 
-0.2 (2012-08-07)
-================
+0.2.2 (2012-08-07)
+==================
+
+Fixed: Legacy non-ephemeral host nodes weren't handled correctly.  (No test :()
+
+0.2.0 (2012-08-07)
+==================
 
 - check that rpm is actually installed by checking installed version.
 
@@ -33,7 +38,7 @@ Changes
 
   - Testing it is slow.
 
-0.1 (2012-07-20)
-================
+0.1.0 (2012-07-20)
+==================
 
 Initial release

@@ -60,7 +60,7 @@ class Agent(object):
             _, meta = self.zk.get(host_path)
             if meta.get('ephemeralOwner'):
                 raise ValueError('Another agent is running')
-            version = self.zk.get_children(host_identifier).get(
+            version = self.zk.get_properties(self.host_identifier).get(
                 'version', version)
             self.zk.delete(host_path)
 

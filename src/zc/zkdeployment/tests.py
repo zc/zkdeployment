@@ -32,6 +32,7 @@ import time
 import traceback
 import unittest
 import zc.zk.testing
+import zim.config # XXX zim duz way too much on import. :( Do it now.
 import zope.testing.setupstack
 
 start_with_digit = re.compile('\d').match
@@ -242,6 +243,51 @@ def test_run_bad_command():
     Traceback (most recent call last):
     ...
     OSError: [Errno 2] No such file or directory
+    """
+
+def test_legacy_host_entries():
+    r"""
+    If there's a non-ephemeral host entry. We snag the version, remove
+    it and create an ephmeral entry.
+
+    >>> import logging, sys
+    >>> handler = logging.StreamHandler(sys.stdout)
+    >>> logger = logging.getLogger('zc.zkdeployment')
+    >>> logger.addHandler(handler)
+    >>> handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
+    >>> logger.setLevel(logging.INFO)
+
+    >>> import zc.zk
+    >>> zk = zc.zk.ZK('zookeeper:2181')
+    >>> zk.import_tree('''
+    ... /hosts
+    ...   version = 1
+    ...   /424242424242
+    ...     version = 1
+    ... ''')
+
+    >>> import zc.zkdeployment.agent
+    >>> agent = zc.zkdeployment.agent.Agent()
+    INFO Agent starting, cluster 1, host 1
+
+    At this point, the host node we created has been converted to an
+    ephemeral node, as we'll see in a minute.
+
+    In fact, if we try to create another agent, we'll get an error
+    because the node exists and is ephemeral:
+
+    >>> zc.zkdeployment.agent.Agent()
+    Traceback (most recent call last):
+    ...
+    ValueError: Another agent is running
+
+    Now, if we close the agent, the agent, the node will go away:
+
+    >>> agent.close()
+    >>> zk.print_tree('/hosts')
+    /hosts
+      version = 1
+
     """
 
 def setUp(test):
