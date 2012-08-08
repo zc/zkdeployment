@@ -46,7 +46,7 @@ sed -i s-/tmp/zc.%{name}-- \
 rm -rf %{buildroot}
 rm -rf $RPM_BUILD_DIR/%{source}
 
-%post
+%posttrans
 if [[ ! -d /etc/%{name} ]]
 then
    mkdir /etc/%{name}
