@@ -25,6 +25,9 @@
 
 - ISSUE: How do we delete customers?
 
+- ISSUE: We're careful about the versions of app RPMS, but not their
+  dependencies. 
+
 Later
 -----
 
