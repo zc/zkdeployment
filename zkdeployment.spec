@@ -58,7 +58,7 @@ parts = rc agent.cfg
 
 [deployment]
 recipe = zc.recipe.deployment
-name = %{name}
+name = zookeeper-deployment
 user = root
 
 [rc]
@@ -97,7 +97,7 @@ text =
 
 %preun
 /usr/local/bin/sbo -u zkdeployment
-rm -rf /etc/%{name} /var/log/%{name}
+rm -rf /etc/%{name} /var/log/zookeeper-deployment
 
 
 %files
