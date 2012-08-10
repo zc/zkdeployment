@@ -89,6 +89,7 @@ class Agent(object):
 
         if run_once:
             self.deploy()
+            time.sleep(.1)
             self.close()
         else:
             self.hosts_properties = self.zk.properties('/hosts')
