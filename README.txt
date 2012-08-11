@@ -10,6 +10,9 @@ Changes
 
 - Set HOME to /root if needed.
 
+- Fixed: application property links didn't work, making it hard to be
+  DRY in some situations.
+
 0.2.1 (2012-08-08)
 ==================
 

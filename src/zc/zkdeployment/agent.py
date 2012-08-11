@@ -136,7 +136,8 @@ class Agent(object):
                         ):
                     continue
 
-            n = self.zk.get_properties(path).get('n', 1)
+            properties = self.zk.properties(path)
+            n = properties.get('n', 1)
             path = path[:path.find('/deploy/')]
             if path in seen:
                 raise ValueError(
@@ -145,9 +146,9 @@ class Agent(object):
                     % (path, self.host_name, self.host_identifier)
                     )
             seen.add(path)
-            app = self.zk.get_properties(path)['type'].split()[0]
+            properties = self.zk.properties(path)
+            app = properties['type'].split()[0]
             rpm_name = app
-            properties = self.zk.get_properties(path)
             try:
                 version = properties['version']
             except KeyError:
