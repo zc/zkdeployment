@@ -18,6 +18,7 @@
 __docformat__ = "reStructuredText"
 
 import doctest
+import logging
 import manuel.capture
 import manuel.doctest
 import manuel.footnote
@@ -250,7 +251,6 @@ def test_legacy_host_entries():
     If there's a non-ephemeral host entry. We snag the version, remove
     it and create an ephmeral entry.
 
-    >>> import logging, sys
     >>> handler = logging.StreamHandler(sys.stdout)
     >>> logger = logging.getLogger('zc.zkdeployment')
     >>> logger.addHandler(handler)
@@ -291,6 +291,32 @@ def test_legacy_host_entries():
     /hosts
       version = 1
 
+    >>> logger.removeHandler(handler)
+    >>> logger.setLevel(logging.NOTSET)
+    """
+
+def test_home_impprovement():
+    """The agent is run as root.
+
+    Unfortunately, it seems to be rather hard to run root with a
+    proper HOME environment variable. Sigh.  So the agent fixes it up,
+    if it must.
+
+    >>> handler = logging.StreamHandler(sys.stdout)
+    >>> logger = logging.getLogger('zc.zkdeployment')
+    >>> logger.addHandler(handler)
+    >>> handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
+    >>> logger.setLevel(logging.INFO)
+
+    >>> os.environ['HOME'] = '/'
+    >>> import zc.zkdeployment.agent
+    >>> agent = zc.zkdeployment.agent.Agent()
+    WARNING Fixing incorrect home, '/'.
+    INFO Agent starting, cluster 1, host 1
+
+    >>> agent.close()
+    >>> logger.removeHandler(handler)
+    >>> logger.setLevel(logging.NOTSET)
     """
 
 def setUp(test):
@@ -305,6 +331,10 @@ def setUp(test):
         test, mock.patch('socket.getfqdn')
         ).return_value = 'host42'
 
+    old_home = os.environ['HOME']
+    zope.testing.setupstack.register(
+        test, os.environ.__setitem__, 'HOME', old_home)
+    os.environ['HOME'] = '/root'
 
 def test_suite():
     suite = unittest.TestSuite()
