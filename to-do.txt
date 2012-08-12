@@ -19,6 +19,15 @@
   (Of course, we should make sure other bits are cleaned up too, if
   they aren't already.)
 
+- ISSUE: We need to be wary of lb recovery latency.  If an elb takes a
+  process out while it's down, it may take a minute or more to put it
+  back.  This means that it may not be enough to wait till a process
+  is accepting requests.  We may need to wait till a process is
+  getting requests.
+
+  Alternatively, we can make sure that a process restarts fast enough
+  that it's not considered unhealthy.  This might be another reason to
+  use a resumelb.
 
 - ISSUE: If we screw up and deploy something that's broken enough to
   not start, we should probably stop deploying it.
