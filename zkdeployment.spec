@@ -46,6 +46,9 @@ sed -i s-/tmp/zc.%{name}-- \
 rm -rf %{buildroot}
 rm -rf $RPM_BUILD_DIR/%{source}
 
+%pre
+rm -rf /opt/%{name}/eggs/setuptools*
+
 %posttrans
 if [[ ! -d /etc/%{name} ]]
 then
