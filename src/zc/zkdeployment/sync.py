@@ -73,7 +73,7 @@ def sync_with_canonical(url, dry_run=False, force=False):
 
 
 def main():
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.WARNING)
     parser = optparse.OptionParser()
     parser.add_option('-d', '--dry-run', dest='dry_run',
         action='store_true',
