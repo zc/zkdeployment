@@ -5,6 +5,15 @@ Title Here
 Changes
 *******
 
+0.3.1 (2012-08-??)
+==================
+
+- Fixed: Clean up of non-empty etc directories caused convergence to
+  fail.
+
+  https://bitbucket.org/zc/zkdeployment/issue/2
+
+
 0.3.0 (2012-08-11)
 ==================
 
