@@ -212,7 +212,10 @@ class Agent(object):
             shutil.rmtree(self._path('opt', rpm_name))
         if os.path.exists(self._path('etc', rpm_name)):
             # Note that the directory *should* be empty
-            os.rmdir(self._path('etc', rpm_name))
+            try:
+                os.rmdir(self._path('etc', rpm_name))
+            except Exception:
+                logger.exception('Removing %r', '/etc/' + rpm_name)
 
     def uninstall_rpm(self, rpm_name):
         logger.info("Removing RPM " + rpm_name)

@@ -304,6 +304,62 @@ def test_home_impprovement():
     >>> agent.close()
     """
 
+def test_non_empty_etc():
+    """If, for some reason, an etc directory isn't empty when we
+    expect it to be, we log an error, but continue:
+
+    >>> setup_logging()
+    >>> zk = zc.zk.ZK('zookeeper:2181')
+    >>> import zc.zkdeployment.agent
+    >>> os.remove(os.path.join('etc', 'zim', 'host_version'))
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     agent = zc.zkdeployment.agent.Agent(); time.sleep(.05)
+    INFO Agent starting, cluster 1, host None
+    INFO ============================================================
+    INFO Deploying version 1
+    yum -q list installed z4m
+    yum -q list installed z4mmonitor
+    INFO Installing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO Installing z4mmonitor /cust/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy /cust/someapp/monitor 0
+    INFO Installing z4m /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 1
+
+    Now add a garbage file to the etc dir:
+
+    >>> open(os.path.join('etc', 'z4mmonitor', 'junk'), 'w').close()
+
+    >>> zk.import_tree('/cust', trim=True)
+
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=2); time.sleep(.05)
+    ... # doctest: +ELLIPSIS
+    INFO ============================================================
+    INFO Deploying version 2
+    INFO Removing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
+    INFO Removing z4mmonitor /cust/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    yum -q list installed z4m
+    INFO Installing z4m /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    INFO Removing RPM z4mmonitor
+    yum -y remove z4mmonitor
+    ERROR Removing '/etc/z4mmonitor'
+    Traceback (most recent call last):
+    ...
+    OSError: [Errno 39] Directory not empty: ...
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 2
+
+    >>> agent.close()
+    """
+
 class TestStream:
 
     def write(self, text):
