@@ -1,14 +1,7 @@
 Agents
 ======
 
-.. setup logging
-
-    >>> import logging, sys
-    >>> handler = logging.StreamHandler(sys.stdout)
-    >>> logger = logging.getLogger('zc.zkdeployment')
-    >>> logger.addHandler(handler)
-    >>> handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
-    >>> logger.setLevel(logging.INFO)
+    >>> setup_logging()
 
 Agents are responsible for watching a ZooKeeper tree and making local
 updates to reflect what's in a tree.
@@ -1610,8 +1603,6 @@ of zero, so we need to check after the install that it really happened.
 .. tear down
 
     >>> patcher.stop()
-    >>> logger.removeHandler(handler)
-    >>> logger.setLevel(logging.NOTSET)
     >>> zim.messaging.send_event = real_send_event
 
 

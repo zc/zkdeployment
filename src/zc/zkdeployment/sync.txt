@@ -2,15 +2,7 @@
 Zookeeper Sync
 ==============
 
-.. setup logging
-
-    >>> import logging, sys
-    >>> handler = logging.StreamHandler(sys.stdout)
-    >>> logger = logging.getLogger('zc.zkdeployment')
-    >>> logger.addHandler(handler)
-    >>> handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
-    >>> logger.setLevel(logging.INFO)
-
+    >>> setup_logging()
 
 sync_with_canonical
 -------------------
@@ -313,8 +305,3 @@ by the zookeeper '/hosts' property.
     >>> zk.properties('/hosts').update(version=42)
     >>> zc.zkdeployment.sync.get_zk_version(zk)
     42
-
-.. tear down
-
-    >>> logger.removeHandler(handler)
-    >>> logger.setLevel(logging.NOTSET)

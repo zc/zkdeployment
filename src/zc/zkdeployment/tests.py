@@ -251,12 +251,7 @@ def test_legacy_host_entries():
     If there's a non-ephemeral host entry. We snag the version, remove
     it and create an ephmeral entry.
 
-    >>> handler = logging.StreamHandler(sys.stdout)
-    >>> logger = logging.getLogger('zc.zkdeployment')
-    >>> logger.addHandler(handler)
-    >>> handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
-    >>> logger.setLevel(logging.INFO)
-
+    >>> setup_logging()
     >>> import zc.zk
     >>> zk = zc.zk.ZK('zookeeper:2181')
     >>> zk.import_tree('''
@@ -290,9 +285,6 @@ def test_legacy_host_entries():
     >>> zk.print_tree('/hosts')
     /hosts
       version = 1
-
-    >>> logger.removeHandler(handler)
-    >>> logger.setLevel(logging.NOTSET)
     """
 
 def test_home_impprovement():
@@ -302,12 +294,7 @@ def test_home_impprovement():
     proper HOME environment variable. Sigh.  So the agent fixes it up,
     if it must.
 
-    >>> handler = logging.StreamHandler(sys.stdout)
-    >>> logger = logging.getLogger('zc.zkdeployment')
-    >>> logger.addHandler(handler)
-    >>> handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
-    >>> logger.setLevel(logging.INFO)
-
+    >>> setup_logging()
     >>> os.environ['HOME'] = '/'
     >>> import zc.zkdeployment.agent
     >>> agent = zc.zkdeployment.agent.Agent()
@@ -315,9 +302,12 @@ def test_home_impprovement():
     INFO Agent starting, cluster 1, host 1
 
     >>> agent.close()
-    >>> logger.removeHandler(handler)
-    >>> logger.setLevel(logging.NOTSET)
     """
+
+class TestStream:
+
+    def write(self, text):
+        sys.stdout.write(text)
 
 def setUp(test):
     zope.testing.setupstack.setUpDirectory(test)
@@ -335,6 +325,19 @@ def setUp(test):
     zope.testing.setupstack.register(
         test, os.environ.__setitem__, 'HOME', old_home)
     os.environ['HOME'] = '/root'
+
+    handler = logging.StreamHandler(TestStream())
+    logger = logging.getLogger('zc.zkdeployment')
+    logger.addHandler(handler)
+    handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
+    logger.setLevel(logging.INFO)
+    test.globs['setup_logging'] = lambda : logger.setLevel(logging.INFO)
+
+    zope.testing.setupstack.register(
+        test,
+        lambda test:
+        logger.removeHandler(handler), logger.setLevel(logging.NOTSET)
+        )
 
 def test_suite():
     suite = unittest.TestSuite()
