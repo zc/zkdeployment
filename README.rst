@@ -576,7 +576,7 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
-0.3.1 (2012-08-??)
+0.3.1 (2012-08-29)
 ------------------
 
 - Fixed: Clean up of non-empty etc directories caused convergence to
