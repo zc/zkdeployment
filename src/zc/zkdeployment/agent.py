@@ -4,6 +4,7 @@ import json
 import logging
 import optparse
 import os
+import re
 import shutil
 import signal
 import simplejson
@@ -38,6 +39,8 @@ Deployment = collections.namedtuple('Deployment',
     ['app', 'version', 'rpm_name', 'path', 'n'])
 UnversionedDeployment = collections.namedtuple('UnversionedDeployment',
     ['app', 'path', 'n'])
+
+versioned_app = re.compile('(\S+)-\d+([.]\d+)*$').match
 
 class Agent(object):
 
@@ -210,7 +213,21 @@ class Agent(object):
     def _uninstall(self, rpm_name):
         if os.path.exists(self._path('opt', rpm_name)):
             shutil.rmtree(self._path('opt', rpm_name))
-        if os.path.exists(self._path('etc', rpm_name)):
+
+        if versioned_app(rpm_name):
+            rpm_name = versioned_app(rpm_name).group(1)
+
+        if (os.path.exists(self._path('etc', rpm_name))
+            and not os.path.exists(self._path('opt', rpm_name))
+            and not [
+                n for n in os.listdir(self._path('opt'))
+                if (
+                    os.path.isdir(self._path('opt', n)) and
+                    versioned_app(n) and
+                    versioned_app(n).group(1) == rpm_name
+                    )
+                ]
+            ):
             # Note that the directory *should* be empty
             try:
                 os.rmdir(self._path('etc', rpm_name))
@@ -233,13 +250,17 @@ class Agent(object):
 
     def update_deployment(self, deployment, remove=False):
         app_name = deployment.app
-        if not os.path.exists(self._path('etc', app_name)):
-            os.mkdir(self._path('etc', app_name))
-        script = os.path.join(self.root, 'opt', app_name, 'bin',
+        if isinstance(deployment, Deployment):
+            rpm_name = deployment.rpm_name
+        else:
+            rpm_name = app_name
+        script = os.path.join(self.root, 'opt', rpm_name, 'bin',
             'zookeeper-deploy')
         cmd_list = [script]
         if remove:
             cmd_list.append('-u')
+        elif not os.path.exists(self._path('etc', app_name)):
+            os.mkdir(self._path('etc', app_name))
         cmd_list.append(deployment.path)
         cmd_list.append(str(deployment.n))
         action = 'Installing'
@@ -247,8 +268,7 @@ class Agent(object):
             action = 'Removing'
         logger.info(' '.join([action, app_name, deployment.path,
                               str(deployment.n)]))
-        zc.zkdeployment.run_command(cmd_list,
-                verbose=self.verbose)
+        zc.zkdeployment.run_command(cmd_list, verbose=self.verbose)
         if remove:
             deployed = self._path(
                 'etc', app_name,

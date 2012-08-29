@@ -13,6 +13,9 @@ Changes
 
   https://bitbucket.org/zc/zkdeployment/issue/2
 
+- Fixed: install of rpms with versions in names not handled correctly
+
+  https://bitbucket.org/zc/zkdeployment/issue/3
 
 0.3.0 (2012-08-11)
 ==================

@@ -33,6 +33,7 @@ import time
 import traceback
 import unittest
 import zc.zk.testing
+import zc.zkdeployment.agent
 import zim.config # XXX zim duz way too much on import. :( Do it now.
 import zope.testing.setupstack
 
@@ -150,6 +151,9 @@ def subprocess_popen(args, stdout=None, stderr=None):
                elif app == 'tooslow':
                    return FakeSubprocess(returncode=1, duration=999)
 
+            if zc.zkdeployment.agent.versioned_app(app):
+                app = zc.zkdeployment.agent.versioned_app(app).group(1)
+
             deployed = os.path.join(
                 'etc', app,
                 args[0][1:].replace('/', ',')+'.'+args[1]+'.deployed')
@@ -158,7 +162,10 @@ def subprocess_popen(args, stdout=None, stderr=None):
                 if os.path.exists(deployed):
                     os.remove(deployed)
             else:
-                open(deployed, 'w').close()
+                try:
+                    open(deployed, 'w').close()
+                except Exception:
+                    print "Couldn't create %r" % deployed
         elif command == 'yum':
             package = args[-1]
             command = args[0]
@@ -181,7 +188,6 @@ def subprocess_popen(args, stdout=None, stderr=None):
 
                 buildfs(
                     dict(
-                        etc={package: {}},
                         opt={
                             package: dict(
                                 bin={'zookeeper-deploy': ''},
@@ -358,6 +364,96 @@ def test_non_empty_etc():
     INFO Done deploying version 2
 
     >>> agent.close()
+    """
+
+def test_versioned_rpm_names():
+    """
+
+We weren't constructing install script paths correctly when using
+versioned apps.
+
+We also were cleaning up etc directories when we shouldn't have.
+
+    >>> setup_logging()
+    >>> zk = zc.zk.ZK('zookeeper:2181')
+    >>> zk.delete_recursive('/cust2')
+    >>> zk.import_tree('''
+    ... /cust
+    ...   /someapp
+    ...     /cms : z4m-4.0.0
+    ...       /deploy
+    ...         /424242424242
+    ... ''', trim=True)
+    >>> agent = zc.zkdeployment.agent.Agent()
+    INFO Agent starting, cluster 1, host 1
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=2); time.sleep(.05)
+    INFO ============================================================
+    INFO Deploying version 2
+    INFO Removing z4m /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
+    INFO Removing z4mmonitor /cust/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    yum -y clean all
+    INFO Installing RPM z4m-4.0.0
+    yum -y install z4m-4.0.0
+    yum -q list installed z4m-4.0.0
+    INFO Installing z4m /cust/someapp/cms 0
+    z4m-4.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO Removing RPM z4m
+    yum -y remove z4m
+    INFO Removing RPM z4mmonitor
+    yum -y remove z4mmonitor
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 2
+
+Let's switch back for good measure (and to see if we're getting paths right:
+
+    >>> zk.import_tree('''
+    ... /cust
+    ...   /someapp
+    ...     /cms : z4m
+    ...       version = '2.0.0'
+    ...       /deploy
+    ...         /424242424242
+    ... ''', trim=True)
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=3); time.sleep(.05)
+    INFO ============================================================
+    INFO Deploying version 3
+    yum -y clean all
+    INFO Installing RPM z4m-2.0.0
+    yum -y install z4m-2.0.0
+    yum -q list installed z4m
+    INFO Installing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO Removing RPM z4m-4.0.0
+    yum -y remove z4m-4.0.0
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 3
+
+
+And finally, remove, which should clean up the etc dir:
+
+
+    >>> zk.delete_recursive('/cust')
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=4); time.sleep(.05)
+    INFO ============================================================
+    INFO Deploying version 4
+    INFO Removing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
+    INFO Removing RPM z4m
+    yum -y remove z4m
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 4
+
+    >>> os.path.exists(os.path.join('etc', 'z4m'))
+    False
+
     """
 
 class TestStream:
