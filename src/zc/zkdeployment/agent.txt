@@ -444,7 +444,7 @@ Note that now we can have different instances use different versions.
     yum -q list installed z4m-4.0.0
     yum -q list installed z4mmonitor
     INFO Installing z4m /cust/someapp/cms 0
-    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    z4m-4.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
     INFO Installing z4m /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     INFO Installing z4mmonitor /cust2/someapp/monitor 0
@@ -452,7 +452,6 @@ Note that now we can have different instances use different versions.
     INFO Restarting zimagent
     /etc/init.d/zimagent restart
     INFO Done deploying version 9
-
 
 If we update the version of z4m again, it will install the new RPM,
 reconfigure, and then uninstall the old one, since no deployments are
@@ -492,7 +491,7 @@ The old rpm gets removed:
     yum -q list installed z4m-5.0.0
     yum -q list installed z4mmonitor
     INFO Installing z4m /cust/someapp/cms 0
-    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    z4m-5.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
     INFO Installing z4m /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     INFO Installing z4mmonitor /cust2/someapp/monitor 0
@@ -537,7 +536,7 @@ In the tree above, the we've replaced the host id with the host name.
     yum -q list installed z4m-5.0.0
     yum -q list installed z4mmonitor
     INFO Installing z4m /cust/someapp/cms 0
-    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    z4m-5.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
     INFO Installing z4m /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     INFO Installing z4mmonitor /cust2/someapp/monitor 0
@@ -581,7 +580,7 @@ Our host agent will ignore the deployment::
     yum -q list installed z4m-5.0.0
     yum -q list installed z4mmonitor
     INFO Installing z4m /cust/someapp/cms 0
-    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    z4m-5.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
     INFO Installing z4m /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     INFO Installing z4mmonitor /cust2/someapp/monitor 0
@@ -656,7 +655,7 @@ And we're good::
     yum -q list installed z4m-5.0.0
     yum -q list installed z4mmonitor
     INFO Installing z4m /cust/someapp/cms 0
-    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    z4m-5.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
     INFO Installing z4m /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     INFO Installing z4mmonitor /cust2/someapp/monitor 0
