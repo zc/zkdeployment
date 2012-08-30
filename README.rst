@@ -576,6 +576,12 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.4.0 (2012-??-??)
+------------------
+
+- Added an unmonitored mode.  If zimagent isn't around, then don't
+  register act as a zim monitor.
+
 0.3.1 (2012-08-29)
 ------------------
 
