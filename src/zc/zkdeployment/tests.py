@@ -40,6 +40,10 @@ import zope.testing.setupstack
 start_with_digit = re.compile('\d').match
 stage_build_path = re.compile('(/opt/\w+/stage-build)$').search
 
+def assert_(cond, mess='Assertion Failed'):
+    if not cond:
+        raise AssertionError(mess)
+
 initial_file_system = dict(
     etc = dict(
         zmh = dict(
@@ -232,6 +236,7 @@ def subprocess_popen(args, stdout=None, stderr=None):
             print command, ' '.join(args)
 
         elif stage_build_path(command) and not args:
+            assert_(os.getcwd() == os.path.dirname(command))
             print stage_build_path(command).group(1)
         else:
             raise ValueError("No such command %s %r" % (command, args))

@@ -326,9 +326,15 @@ class Agent(object):
                         zc.zkdeployment.run_command(
                             ['svn', 'co', version, self._path('opt', rpm_name)],
                             verbose=self.verbose)
-                        zc.zkdeployment.run_command(
-                            [self._path('opt', rpm_name, 'stage-build')],
-                            verbose=self.verbose)
+
+                        here = os.getcwd()
+                        os.chdir(self._path('opt', rpm_name))
+                        try:
+                            zc.zkdeployment.run_command(
+                                [self._path('opt', rpm_name, 'stage-build')],
+                                verbose=self.verbose)
+                        finally:
+                            os.chdir(here)
                         continue
                     else:
                         rpm_name += '-' + version

@@ -576,6 +576,12 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.4.0 (2012-??-??)
+------------------
+
+- The host agent now runs stage-build scripts in the script's directory so
+  the scripts don't have to.
+
 0.3.1 (2012-08-29)
 ------------------
 
