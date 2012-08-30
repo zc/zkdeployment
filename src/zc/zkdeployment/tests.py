@@ -40,6 +40,10 @@ import zope.testing.setupstack
 start_with_digit = re.compile('\d').match
 stage_build_path = re.compile('(/opt/\w+/stage-build)$').search
 
+def assert_(cond, mess='Assertion Failed'):
+    if not cond:
+        raise AssertionError(mess)
+
 initial_file_system = dict(
     etc = dict(
         zmh = dict(
@@ -358,7 +362,7 @@ def test_non_empty_etc():
     ERROR Removing '/etc/z4mmonitor'
     Traceback (most recent call last):
     ...
-    OSError: [Errno 39] Directory not empty: ...
+    OSError:...Directory not empty: ...
     INFO Restarting zimagent
     /etc/init.d/zimagent restart
     INFO Done deploying version 2
@@ -454,6 +458,47 @@ And finally, remove, which should clean up the etc dir:
     >>> os.path.exists(os.path.join('etc', 'z4m'))
     False
 
+    >>> agent.close()
+    """
+
+def monitor_only_with_zimagent():
+    """
+    Normally, with zimagent installed, the agent monitor is started:
+
+    >>> with mock.patch('zc.zkdeployment.agent.Agent') as Agent:
+    ...     with mock.patch('zc.zkdeployment.agent.Monitor') as Monitor:
+    ...         zc.zkdeployment.agent.main([])
+    ...         Agent.assert_called_with(verbose=False, run_once=False)
+    ...         Monitor.assert_called_with(Agent.return_value)
+    ...         Monitor.return_value.run.assert_called_with()
+    ...         assert_(Agent.return_value.monitor_cb is
+    ...                 Monitor.return_value.send_state)
+
+    >>> os.remove(os.path.join('etc', 'init.d', 'zimagent'))
+
+
+    >>> with mock.patch('zc.zkdeployment.agent.Agent') as Agent:
+    ...     with mock.patch('zc.zkdeployment.agent.Monitor') as Monitor:
+    ...         zc.zkdeployment.agent.main([])
+    ...         Agent.assert_called_with(verbose=False, run_once=False)
+    ...         assert_(not Monitor.called)
+    ...         Agent.return_value.run.assert_called_with()
+
+    """
+
+def agent_run():
+    """
+    >>> import signal
+    >>> agent = zc.zkdeployment.agent.Agent()
+    >>> with mock.patch('signal.signal'):
+    ...      thread = zc.thread.Thread(agent.run)
+    ...      thread.join(.1)
+    ...      assert_(thread.is_alive())
+    ...      num, func = signal.signal.call_args[0]
+    ...      assert_(num == signal.SIGTERM)
+    ...      func(None, None)
+    ...      thread.join(.1)
+    ...      assert_(not thread.is_alive())
     """
 
 class TestStream:

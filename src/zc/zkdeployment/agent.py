@@ -10,6 +10,7 @@ import signal
 import simplejson
 import socket
 import sys
+import threading
 import time
 import zc.thread
 import zc.time
@@ -19,6 +20,14 @@ import zim.config
 import zim.messaging
 import zktools.locking
 import zookeeper
+
+parser = optparse.OptionParser()
+parser.add_option(
+    '--verbose', '-v', dest='verbose', action='store_true', default=False,
+    help='Log all output')
+parser.add_option(
+    '--run-once', '-1', dest='run_once', action='store_true',
+    default=False, help='Run one deployment, and then exit')
 
 # Hack, zktools.locking calls zookeeper.set_log_stream, which messes up zk.
 zookeeper.set_log_stream = lambda f: None
@@ -394,6 +403,12 @@ class Agent(object):
             logger.info('Done deploying version ' + str(self.cluster_version))
             self.failing = False
 
+    def run(self):
+        event = threading.Event()
+        def handle_signal(signum, frame):
+            event.set()
+        signal.signal(signal.SIGTERM, handle_signal)
+        event.wait()
 
 class Monitor(object):
 
@@ -472,16 +487,11 @@ class Monitor(object):
         msg= 'ANNOUNCE: unmanaging ' +  body
         zim.messaging.send_event(self.uri, self.state, msg)
 
+def main(args=None):
+    if args is None:
+        args = sys.argv[1:]
 
-def main():
-    parser = optparse.OptionParser()
-    parser.add_option(
-        '--verbose', '-v', dest='verbose', action='store_true', default=False,
-        help='Log all output')
-    parser.add_option(
-        '--run-once', '-1', dest='run_once', action='store_true',
-        default=False, help='Run one deployment, and then exit')
-    options, args = parser.parse_args()
+    options, args = parser.parse_args(args)
     assert not args
     logging.basicConfig(
         level=logging.DEBUG if options.verbose else logging.INFO,
@@ -490,8 +500,15 @@ def main():
     ZK_LOCATION = 'zookeeper:2181'
 
     agent = Agent(verbose=options.verbose, run_once=options.run_once)
-    monitor = Monitor(agent)
-    if not options.run_once:
-        agent.monitor_cb = monitor.send_state
-        monitor.run()
+
+    if os.path.exists(
+        os.path.join(
+            os.getenv('TEST_ROOT', '/'),'etc', 'init.d', 'zimagent')
+        ):
+        monitor = Monitor(agent)
+        if not options.run_once:
+            agent.monitor_cb = monitor.send_state
+            monitor.run()
+    else:
+        agent.run()
 
