@@ -236,6 +236,7 @@ def subprocess_popen(args, stdout=None, stderr=None):
             print command, ' '.join(args)
 
         elif stage_build_path(command) and not args:
+            assert_(os.getcwd() == os.path.dirname(command))
             print stage_build_path(command).group(1)
         else:
             raise ValueError("No such command %s %r" % (command, args))
