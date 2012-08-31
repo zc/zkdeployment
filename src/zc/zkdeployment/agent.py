@@ -44,12 +44,22 @@ ZK_LOCATION = 'zookeeper:2181'
 
 logger = logging.getLogger(__name__)
 
+# The rpm name is also the name of the directory in /opt
 Deployment = collections.namedtuple('Deployment',
     ['app', 'version', 'rpm_name', 'path', 'n'])
 UnversionedDeployment = collections.namedtuple('UnversionedDeployment',
-    ['app', 'path', 'n'])
+    ['app', 'rpm_name', 'path', 'n'])
 
 versioned_app = re.compile('(\S+)-\d+([.]\d+)*$').match
+
+def path2name(path, *extensions):
+    name = path[1:].replace('/', ',')
+    for ext in extensions:
+        name += '.%s' % ext
+    return name
+
+def name2path(name):
+    return '/'+name.replace(',', '/')
 
 class Agent(object):
 
@@ -177,25 +187,37 @@ class Agent(object):
                 yield Deployment(app, version, rpm_name, path, i)
 
     def get_installed_deployments(self):
-        for app in os.listdir(os.path.join(self.root, 'opt')):
+        for rpm_name in os.listdir(os.path.join(self.root, 'opt')):
             script = os.path.join(
-                self.root, 'opt', app, 'bin', 'zookeeper-deploy')
+                self.root, 'opt', rpm_name, 'bin', 'zookeeper-deploy')
             if not os.path.exists(script):
                 continue
+
+            if versioned_app(rpm_name):
+                app = versioned_app(rpm_name).group(1)
+            else:
+                app = rpm_name
             etcpath = os.path.join(self.root, 'etc', app)
             if not os.path.isdir(etcpath):
                 continue
+
             for name in os.listdir(etcpath):
                 if name.endswith('.deployed'):
-                    path, n = ('/' + name[:-9].replace(',', '/')).rsplit(
-                        '.', 1)
+                    path, n = name2path(name[:-9]).rsplit('.', 1)
+                    scriptpath = os.path.join(etcpath, name[:-8]+'script')
+                    if os.path.isfile(scriptpath):
+                        with open(scriptpath) as f:
+                            if f.read() != script:
+                                continue
+
                     yield UnversionedDeployment(
-                        app.decode('utf8'), path, int(n))
+                        app.decode('utf8'), rpm_name.decode('utf8'),
+                        path, int(n))
 
     def _path(self, *names):
         return os.path.join(self.root, *names)
 
-    def get_installed_apps(self):
+    def get_installed_opts(self):
         return set(
             name
             for name in os.listdir(self._path('opt'))
@@ -219,29 +241,26 @@ class Agent(object):
             if line.startswith(rpm_name):
                 return line.split()[1].split('-', 1)[0]
 
+    def get_svn_version(self, rpm_name, default=None):
+        install_dir = self._path('opt', rpm_name)
+        if not os.path.exists(install_dir):
+            return default
+        if not os.path.exists(self._path('opt', rpm_name, '.svn')):
+            # SVN checkout, doesn't have a version
+            return default
+        for line in zc.zkdeployment.run_command(
+            ['svn', 'info', install_dir], verbose=self.verbose).split('\n'):
+            if line.startswith('URL: '):
+                return line.split()[1]
+
+        return default
+
     def _uninstall(self, rpm_name):
         if os.path.exists(self._path('opt', rpm_name)):
             shutil.rmtree(self._path('opt', rpm_name))
 
         if versioned_app(rpm_name):
             rpm_name = versioned_app(rpm_name).group(1)
-
-        if (os.path.exists(self._path('etc', rpm_name))
-            and not os.path.exists(self._path('opt', rpm_name))
-            and not [
-                n for n in os.listdir(self._path('opt'))
-                if (
-                    os.path.isdir(self._path('opt', n)) and
-                    versioned_app(n) and
-                    versioned_app(n).group(1) == rpm_name
-                    )
-                ]
-            ):
-            # Note that the directory *should* be empty
-            try:
-                os.rmdir(self._path('etc', rpm_name))
-            except Exception:
-                logger.exception('Removing %r', '/etc/' + rpm_name)
 
     def uninstall_rpm(self, rpm_name):
         logger.info("Removing RPM " + rpm_name)
@@ -257,34 +276,40 @@ class Agent(object):
         else:
             self.uninstall_rpm(opt_name)
 
-    def update_deployment(self, deployment, remove=False):
+    def remove_deployment(self, deployment):
+        logger.info('Removing %s %s %s',
+                    deployment.app, deployment.path, deployment.n)
+        script = self._path(
+            'opt', deployment.rpm_name, 'bin', 'zookeeper-deploy')
+        zc.zkdeployment.run_command(
+            [script, '-u', deployment.path, str(deployment.n)],
+            verbose=self.verbose)
+        deployed = self._path(
+            'etc', deployment.app,
+            path2name(deployment.path, deployment.n, "deployed"))
+        if os.path.exists(deployed):
+            os.remove(deployed)
+        scriptpath = deployed[:-8]+'script'
+        if os.path.exists(scriptpath):
+            os.remove(scriptpath)
+
+    def install_deployment(self, deployment):
         app_name = deployment.app
-        if isinstance(deployment, Deployment):
-            rpm_name = deployment.rpm_name
-        else:
-            rpm_name = app_name
-        script = os.path.join(self.root, 'opt', rpm_name, 'bin',
-            'zookeeper-deploy')
-        cmd_list = [script]
-        if remove:
-            cmd_list.append('-u')
-        elif not os.path.exists(self._path('etc', app_name)):
+        logger.info('Installing %s %s %s',
+                    app_name, deployment.path, deployment.n)
+        if not os.path.exists(self._path('etc', app_name)):
             os.mkdir(self._path('etc', app_name))
-        cmd_list.append(deployment.path)
-        cmd_list.append(str(deployment.n))
-        action = 'Installing'
-        if remove:
-            action = 'Removing'
-        logger.info(' '.join([action, app_name, deployment.path,
-                              str(deployment.n)]))
-        zc.zkdeployment.run_command(cmd_list, verbose=self.verbose)
-        if remove:
-            deployed = self._path(
-                'etc', app_name,
-                deployment.path[1:].replace('/', ',') +
-                (".%s.deployed" % deployment.n))
-            if os.path.exists(deployed):
-                os.remove(deployed)
+        script = self._path(
+            'opt', deployment.rpm_name, 'bin', 'zookeeper-deploy')
+        zc.zkdeployment.run_command(
+            [script, deployment.path, str(deployment.n)],
+            verbose=self.verbose)
+        with open(
+            self._path('etc', app_name,
+                       path2name(deployment.path, deployment.n, 'script')
+                       ),
+            'w') as f:
+            f.write(script)
 
     def deploy(self):
         try:
@@ -293,12 +318,28 @@ class Agent(object):
                 return
             logger.info('=' * 60)
             logger.info('Deploying version ' + str(self.cluster_version))
+
             deployments = set(self.get_deployments())
 
-            # Gather versions to deploy, checking for conflicts:
-            deploy_versions = {}
+            ############################################################
+            # Gather versions to deploy, checking for conflicts.  Note
+            # that conflicts boil down to trying to install 2
+            # different things in the same directory in /opt.
+            # Otherwise, we don't really care about conflicting
+            # versions.
+            deploy_versions = {} # {rpm_name -> versions
+
+            # Also gather the apps we'll have installed
+            apps = set()         # {app}
+
+            # Also gather deployments to install:
+            to_deploy = set()    # {(app, path, n)}
+
             for deployment in deployments:
                 if deployment.rpm_name in deploy_versions:
+                    # Note that the rpm_name is most importantly the
+                    # name of the directory in /opt.  We can't have
+                    # more than one version for a given opt dir.
                     if (deployment.version !=
                             deploy_versions[deployment.rpm_name]):
                         raise ValueError(
@@ -309,33 +350,48 @@ class Agent(object):
                 else:
                     deploy_versions[deployment.rpm_name] = deployment.version
 
-            # Remove installed deployments that aren't in zk
-            for deployment in sorted(
-                set(self.get_installed_deployments()) -
-                set(UnversionedDeployment(deployment.app, deployment.path,
-                                          deployment.n)
-                    for deployment in deployments)
-                ):
-                self.update_deployment(deployment, remove=True)
+                apps.add(deployment.app)
+                to_deploy.add((deployment.app, deployment.path, deployment.n))
+            #
+            ############################################################
 
-            # update app versions
+            # Remove installed deployments that aren't in zk
+            installed_apps = set()
+            for deployment in sorted(self.get_installed_deployments()):
+                installed_apps.add(deployment.app)
+                if ((deployment.app, deployment.path, deployment.n)
+                    not in to_deploy):
+                    self.remove_deployment(deployment)
+
+
+            # update app software, if necessary
             clean = False
             for rpm_package_name, version in sorted(deploy_versions.items()):
                 rpm_version = self.get_rpm_version(rpm_package_name)
                 if rpm_version != version:
+                    # Note that we always get here for svn installs,
+                    # since they have no rpm version.
                     rpm_name = rpm_package_name
                     if version is DONT_CARE:
                         if rpm_version is not None:
                             continue # single-version app, is already installed
                     elif version.startswith('svn+ssh://'):
                         # checkout
-                        if rpm_version != None:
+                        if rpm_version is not None:
                             self.uninstall_rpm(rpm_name)
-                        logger.info("Checkout %s (%s) " % (rpm_name, version))
+                        elif self.get_svn_version(rpm_name, version) != version:
+                            logger.info("Removing conflicting checkout %r != %r"
+                                        % (self.get_svn_version(rpm_name),
+                                           version))
+                            self._uninstall(rpm_name)
+
+                        logger.info("Checkout %s (%s)" % (rpm_name, version))
+
                         zc.zkdeployment.run_command(
                             ['svn', 'co', version, self._path('opt', rpm_name)],
                             verbose=self.verbose)
 
+                        logger.info("Build %s (%s)" % (rpm_name, version))
                         here = os.getcwd()
                         os.chdir(self._path('opt', rpm_name))
                         try:
@@ -373,17 +429,27 @@ class Agent(object):
             # Now update/install the needed deployments
             for deployment in sorted(deployments, key=lambda d: (d.path, d.n)):
                 with zktools.locking.ZkLock(
-                    self.zk, deployment.path.replace('/', ',')):
+                    self.zk, path2name(deployment.path)
+                    ):
                     # The reason for the lock here is to prevent more than one
                     # deployment for an app at a time cluster wide.
-                    self.update_deployment(deployment)
+                    self.install_deployment(deployment)
 
-            # Uninstall apps we don't have any more:
+            # Uninstall software we don't have any more:
             for rpm_name in sorted(
-                self.get_installed_apps() -
+                self.get_installed_opts() -
                 set(deployment.rpm_name for deployment in deployments)
                 ):
                 self.uninstall_something(rpm_name)
+
+            # remove etc directories we don't need any moe
+            for app_name in sorted(installed_apps - apps):
+                if os.path.exists(self._path('etc', app_name)):
+                    # Note that the directory *should* be empty
+                    try:
+                        os.rmdir(self._path('etc', app_name))
+                    except Exception:
+                        logger.exception('Removing %r', '/etc/' + app_name)
 
             if os.path.exists(self._path('etc', 'init.d', 'zimagent')):
                 logger.info("Restarting zimagent")
