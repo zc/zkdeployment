@@ -576,11 +576,12 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
-0.4.0 (2012-??-??)
+0.4.0 (2012-09-05)
 ------------------
 
 - The host agent now runs stage-build scripts in the script's directory so
   the scripts don't have to.
+
 - Added an unmonitored mode.  If zimagent isn't around, then don't
   register act as a zim monitor.
 
