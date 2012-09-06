@@ -222,16 +222,26 @@ def subprocess_popen(args, stdout=None, stderr=None):
                 raise ValueError(command)
 
         elif command == 'svn':
-            if not args[0] == 'co' and len(args) == 3:
-                raise ValueError("Invalid svn command %r" % args)
-            bin_path = os.path.join(args[2], 'bin')
-            svn_path = os.path.join(args[2], '.svn')
-            if not os.path.exists(bin_path):
-                os.makedirs(bin_path)
-            if not os.path.exists(svn_path):
-                os.makedirs(svn_path)
-            with open(os.path.join(args[2], 'bin', 'zookeeper-deploy'), 'w'):
-                pass
+            if args[0] == 'co' and len(args) == 3:
+                bin_path = os.path.join(args[2], 'bin')
+                svn_path = os.path.join(args[2], '.svn')
+                url_path = os.path.join(args[2], 'url')
+                if os.path.exists(url_path):
+                    with open(url_path) as f:
+                        if f.read() != args[1]:
+                            raise ValueError('bad svn url')
+                if not os.path.exists(bin_path):
+                    os.makedirs(bin_path)
+                if not os.path.exists(svn_path):
+                    os.makedirs(svn_path)
+                with open(os.path.join(args[2], 'bin', 'zookeeper-deploy'),
+                          'w'):
+                    pass
+                with open(url_path, 'w') as f:
+                    f.write(args[1])
+            if args[0] == 'info':
+                with open(os.path.join(args[1], 'url')) as f:
+                    print >> stdout, info_template % f.read()
         elif command == '/etc/init.d/zimagent':
             print command, ' '.join(args)
 
@@ -245,6 +255,18 @@ def subprocess_popen(args, stdout=None, stderr=None):
         return FakeSubprocess(returncode=1)
     else:
         return FakeSubprocess(returncode=0)
+
+info_template = """Path: .
+URL: %s
+Repository Root: svn+ssh://svn.zope.com/repos/main
+Repository UUID: 32cb22c4-c7e1-0310-b164-a889846e9adb
+Revision: 68457
+Node Kind: directory
+Schedule: normal
+Last Changed Author: satchit
+Last Changed Rev: 68387
+Last Changed Date: 2012-04-11 11:43:24 -0400 (Wed, 11 Apr 2012)
+"""
 
 def test_run_bad_command():
     """
@@ -324,7 +346,7 @@ def test_non_empty_etc():
     >>> import zc.zkdeployment.agent
     >>> os.remove(os.path.join('etc', 'zim', 'host_version'))
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
-    ...     agent = zc.zkdeployment.agent.Agent(); time.sleep(.05)
+    ...     agent = zc.zkdeployment.agent.Agent(); time.sleep(.50)
     INFO Agent starting, cluster 1, host None
     INFO ============================================================
     INFO Deploying version 1
@@ -347,7 +369,7 @@ def test_non_empty_etc():
     >>> zk.import_tree('/cust', trim=True)
 
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
-    ...     zk.properties('/hosts').update(version=2); time.sleep(.05)
+    ...     zk.properties('/hosts').update(version=2); time.sleep(.50)
     ... # doctest: +ELLIPSIS
     INFO ============================================================
     INFO Deploying version 2
@@ -360,7 +382,7 @@ def test_non_empty_etc():
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     INFO Removing RPM z4mmonitor
     yum -y remove z4mmonitor
-    ERROR Removing '/etc/z4mmonitor'
+    ERROR Removing u'/etc/z4mmonitor'
     Traceback (most recent call last):
     ...
     OSError:...Directory not empty: ...
@@ -392,7 +414,7 @@ We also were cleaning up etc directories when we shouldn't have.
     >>> agent = zc.zkdeployment.agent.Agent()
     INFO Agent starting, cluster 1, host 1
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
-    ...     zk.properties('/hosts').update(version=2); time.sleep(.05)
+    ...     zk.properties('/hosts').update(version=2); time.sleep(.50)
     INFO ============================================================
     INFO Deploying version 2
     INFO Removing z4m /cust2/someapp/cms 0
@@ -424,7 +446,7 @@ Let's switch back for good measure (and to see if we're getting paths right:
     ...         /424242424242
     ... ''', trim=True)
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
-    ...     zk.properties('/hosts').update(version=3); time.sleep(.05)
+    ...     zk.properties('/hosts').update(version=3); time.sleep(.50)
     INFO ============================================================
     INFO Deploying version 3
     yum -y clean all
@@ -445,7 +467,7 @@ And finally, remove, which should clean up the etc dir:
 
     >>> zk.delete_recursive('/cust')
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
-    ...     zk.properties('/hosts').update(version=4); time.sleep(.05)
+    ...     zk.properties('/hosts').update(version=4); time.sleep(.50)
     INFO ============================================================
     INFO Deploying version 4
     INFO Removing z4m /cust/someapp/cms 0
@@ -500,6 +522,75 @@ def agent_run():
     ...      func(None, None)
     ...      thread.join(.1)
     ...      assert_(not thread.is_alive())
+    """
+
+def switching_subversion_urls():
+    """We need to be able to change subversion URLs.
+
+Set up with one url:
+
+    >>> setup_logging()
+    >>> zk = zc.zk.ZK('zookeeper:2181')
+    >>> zk.delete_recursive('/cust2')
+    >>> zk.import_tree('''
+    ... /cust
+    ...   /someapp
+    ...     /cms : z4m
+    ...       svn_location = 'svn+ssh://svn.zope.com/repos/main/z4m/trunk'
+    ...       /deploy
+    ...         /424242424242
+    ... ''', trim=True)
+    >>> agent = zc.zkdeployment.agent.Agent()
+    INFO Agent starting, cluster 1, host 1
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=2); time.sleep(.50)
+    INFO ============================================================
+    INFO Deploying version 2
+    INFO Removing z4m /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
+    INFO Removing z4mmonitor /cust/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    yum -q list installed z4m
+    INFO Removing RPM z4m
+    yum -y remove z4m
+    INFO Checkout z4m (svn+ssh://svn.zope.com/repos/main/z4m/trunk)
+    INFO Build z4m (svn+ssh://svn.zope.com/repos/main/z4m/trunk)
+    /opt/z4m/stage-build
+    INFO Installing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO Removing RPM z4mmonitor
+    yum -y remove z4mmonitor
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 2
+
+Then switch to another:
+
+    >>> zk.import_tree('''
+    ... /cust
+    ...   /someapp
+    ...     /cms : z4m
+    ...       svn_location = 'svn+ssh://svn.zope.com/repos/main/z4m/branches/x'
+    ...       /deploy
+    ...         /424242424242
+    ... ''', trim=True)
+
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=3); time.sleep(.50)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 3
+    INFO Removing conflicting checkout
+    'svn+ssh://svn.zope.com/repos/main/z4m/trunk' !=
+    u'svn+ssh://svn.zope.com/repos/main/z4m/branches/x'
+    INFO Checkout z4m (svn+ssh://svn.zope.com/repos/main/z4m/branches/x)
+    INFO Build z4m (svn+ssh://svn.zope.com/repos/main/z4m/branches/x) 
+    /opt/z4m/stage-build
+    INFO Installing z4m /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO Restarting zimagent
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 3
     """
 
 class TestStream:

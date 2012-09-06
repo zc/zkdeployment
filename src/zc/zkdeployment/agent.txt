@@ -80,9 +80,11 @@ of the deployments:
 This is compared with the installed applications on its host:
 
     >>> sorted(agent.get_installed_deployments())
-    [UnversionedDeployment(app=u'z4m', path='/cust/someapp/cms', n=0),
-     UnversionedDeployment(app=u'z4m', path='/cust2/someapp/cms', n=0),
-     UnversionedDeployment(app=u'z4mmonitor',
+    [UnversionedDeployment(app=u'z4m', rpm_name=u'z4m',
+                           path='/cust/someapp/cms', n=0),
+     UnversionedDeployment(app=u'z4m', rpm_name=u'z4m',
+                           path='/cust2/someapp/cms', n=0),
+     UnversionedDeployment(app=u'z4mmonitor', rpm_name=u'z4mmonitor',
                            path='/cust/someapp/monitor', n=0)]
 
 OK, we've demonstrated some of the pieces.  Now let's try making a
@@ -752,10 +754,10 @@ The deployment goes through, and the host reconfigures itself as a cache.
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 16
-    INFO Removing z4m /cust/someapp/cms 0
-    z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
     INFO Removing z4m /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
+    INFO Removing z4m /cust/someapp/cms 0
+    z4m-5.0.0/bin/zookeeper-deploy -u /cust/someapp/cms 0
     INFO Removing z4mmonitor /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy -u /cust2/someapp/monitor 0
     yum -y clean all
@@ -961,17 +963,17 @@ When the agent closes, it's host node goes away:
     >>> zk.print_tree()
     /ZktoolsLocks
       string_value = 'zktools ZLock dir'
-      /,cust,someapp,acrank
+      /cust,someapp,acrank
         string_value = 'lock'
-      /,cust,someapp,cache
+      /cust,someapp,cache
         string_value = 'lock'
-      /,cust,someapp,cms
+      /cust,someapp,cms
         string_value = 'lock'
-      /,cust2,someapp,cache
+      /cust2,someapp,cache
         string_value = 'lock'
-      /,cust2,someapp,cms
+      /cust2,someapp,cms
         string_value = 'lock'
-      /,cust2,someapp,monitor
+      /cust2,someapp,monitor
         string_value = 'lock'
     /cust
       /someapp
@@ -1057,6 +1059,7 @@ When the software is deployed, it will get built out correctly.
     INFO ============================================================
     INFO Deploying version 22
     INFO Checkout pywrite (svn+ssh://svn.zope.com/repos/main/pywrite/trunk)
+    INFO Build pywrite (svn+ssh://svn.zope.com/repos/main/pywrite/trunk)
     /opt/pywrite/stage-build
     yum -q list installed squid
     INFO Installing squid /cust/someapp/cache 0
@@ -1076,6 +1079,7 @@ On update, it will check out the software again, pulling in any new changes.
     INFO ============================================================
     INFO Deploying version 23
     INFO Checkout pywrite (svn+ssh://svn.zope.com/repos/main/pywrite/trunk)
+    INFO Build pywrite (svn+ssh://svn.zope.com/repos/main/pywrite/trunk)
     /opt/pywrite/stage-build
     yum -q list installed squid
     INFO Installing squid /cust/someapp/cache 0

@@ -585,6 +585,9 @@ Changes
 - Added an unmonitored mode.  If zimagent isn't around, then don't
   register act as a zim monitor.
 
+- Fixed: Changing value of svn_location results in failure
+  https://bitbucket.org/zc/zkdeployment/issue/1
+
 0.3.1 (2012-08-29)
 ------------------
 
