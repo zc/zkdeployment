@@ -346,7 +346,7 @@ def test_non_empty_etc():
     >>> import zc.zkdeployment.agent
     >>> os.remove(os.path.join('etc', 'zim', 'host_version'))
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
-    ...     agent = zc.zkdeployment.agent.Agent(); time.sleep(.05)
+    ...     agent = zc.zkdeployment.agent.Agent(); time.sleep(.50)
     INFO Agent starting, cluster 1, host None
     INFO ============================================================
     INFO Deploying version 1
@@ -369,7 +369,7 @@ def test_non_empty_etc():
     >>> zk.import_tree('/cust', trim=True)
 
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
-    ...     zk.properties('/hosts').update(version=2); time.sleep(.05)
+    ...     zk.properties('/hosts').update(version=2); time.sleep(.50)
     ... # doctest: +ELLIPSIS
     INFO ============================================================
     INFO Deploying version 2
@@ -414,7 +414,7 @@ We also were cleaning up etc directories when we shouldn't have.
     >>> agent = zc.zkdeployment.agent.Agent()
     INFO Agent starting, cluster 1, host 1
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
-    ...     zk.properties('/hosts').update(version=2); time.sleep(.05)
+    ...     zk.properties('/hosts').update(version=2); time.sleep(.50)
     INFO ============================================================
     INFO Deploying version 2
     INFO Removing z4m /cust2/someapp/cms 0
@@ -446,7 +446,7 @@ Let's switch back for good measure (and to see if we're getting paths right:
     ...         /424242424242
     ... ''', trim=True)
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
-    ...     zk.properties('/hosts').update(version=3); time.sleep(.05)
+    ...     zk.properties('/hosts').update(version=3); time.sleep(.50)
     INFO ============================================================
     INFO Deploying version 3
     yum -y clean all
@@ -467,7 +467,7 @@ And finally, remove, which should clean up the etc dir:
 
     >>> zk.delete_recursive('/cust')
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
-    ...     zk.properties('/hosts').update(version=4); time.sleep(.05)
+    ...     zk.properties('/hosts').update(version=4); time.sleep(.50)
     INFO ============================================================
     INFO Deploying version 4
     INFO Removing z4m /cust/someapp/cms 0
@@ -543,7 +543,7 @@ Set up with one url:
     >>> agent = zc.zkdeployment.agent.Agent()
     INFO Agent starting, cluster 1, host 1
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
-    ...     zk.properties('/hosts').update(version=2); time.sleep(.05)
+    ...     zk.properties('/hosts').update(version=2); time.sleep(.50)
     INFO ============================================================
     INFO Deploying version 2
     INFO Removing z4m /cust2/someapp/cms 0
@@ -576,7 +576,7 @@ Then switch to another:
     ... ''', trim=True)
 
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
-    ...     zk.properties('/hosts').update(version=3); time.sleep(.05)
+    ...     zk.properties('/hosts').update(version=3); time.sleep(.50)
     ... # doctest: +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 3
