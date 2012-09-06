@@ -576,6 +576,15 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.4.1 (2012-09-06)
+------------------
+
+- Fixed: Changing value of svn_location results in failure
+  https://bitbucket.org/zc/zkdeployment/issue/1
+
+- Fixed: on sync, there was spurious output about not deleting
+  ephemeral nodes.
+
 0.4.0 (2012-09-05)
 ------------------
 
@@ -584,9 +593,6 @@ Changes
 
 - Added an unmonitored mode.  If zimagent isn't around, then don't
   register act as a zim monitor.
-
-- Fixed: Changing value of svn_location results in failure
-  https://bitbucket.org/zc/zkdeployment/issue/1
 
 0.3.1 (2012-08-29)
 ------------------
