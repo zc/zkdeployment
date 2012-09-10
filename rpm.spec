@@ -74,7 +74,7 @@ chkconfig = 345 90 10
 [agent]
 recipe = zc.zdaemonrecipe
 deployment = deployment
-program = \${buildout:bin-directory}/agent
+program = \${buildout:bin-directory}/agent -v
 zdaemon.conf =
   <runner>
     logfile \${deployment:log-directory}/agent.log
