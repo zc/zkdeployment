@@ -16,7 +16,6 @@ import zc.thread
 import zc.time
 import zc.zk
 import zc.zkdeployment
-import zim.config
 import zim.messaging
 import zktools.locking
 import zookeeper
@@ -486,8 +485,6 @@ class Monitor(object):
 
     def __init__(self, agent):
         self.agent = agent
-        config = zim.config.get_config()
-        self.hostname = zim.config.get_config().net.hostname
         self.uri = '/zkdeploy/agent'
         self.manager_uri = '/managers/zkdeploymanager'
         self.interval = 300
