@@ -6,7 +6,7 @@ import zc.thread
 
 logger = logging.getLogger(__name__)
 
-def run_command(cmd_list, verbose=False):
+def run_command(cmd_list, verbose=False, return_output=False):
     tfile = tempfile.NamedTemporaryFile('w', delete=False,
                                         prefix='zkdeployment-run_command')
     process = subprocess.Popen(
@@ -26,4 +26,5 @@ def run_command(cmd_list, verbose=False):
                     (cmd_list,
                      output.replace('\n', '\n  ').strip()))
 
-    return output
+    if return_output:
+        return output

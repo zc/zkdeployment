@@ -16,7 +16,7 @@ zookeeper.set_log_stream = lambda f: None
 
 
 def svn_cmd(cmd, url):
-    return zc.zkdeployment.run_command([SVN_CMD, cmd, url])
+    return zc.zkdeployment.run_command([SVN_CMD, cmd, url], return_output=True)
 
 
 def get_svn_version(body):

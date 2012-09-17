@@ -273,7 +273,7 @@ def test_run_bad_command():
     If the command passed to run command doesn't exist, we need an error report:
 
     >>> import zc.zkdeployment
-    >>> zc.zkdeployment.run_command(['wtf111111111111'])
+    >>> zc.zkdeployment.run_command(['wtf111111111111'], return_output=True)
     Traceback (most recent call last):
     ...
     OSError: [Errno 2] No such file or directory
