@@ -264,7 +264,6 @@ class Agent(object):
             rpm_name = versioned_app(rpm_name).group(1)
 
     def uninstall_rpm(self, rpm_name):
-        logger.info("Removing RPM " + rpm_name)
         zc.zkdeployment.run_command(['yum', '-y', 'remove', rpm_name],
                 verbose=self.verbose, return_output=False)
         self._uninstall(rpm_name)
@@ -278,8 +277,6 @@ class Agent(object):
             self.uninstall_rpm(opt_name)
 
     def remove_deployment(self, deployment):
-        logger.info('Removing %s %s %s',
-                    deployment.app, deployment.path, deployment.n)
         script = self._path(
             'opt', deployment.rpm_name, 'bin', 'zookeeper-deploy')
         zc.zkdeployment.run_command(
@@ -296,8 +293,6 @@ class Agent(object):
 
     def install_deployment(self, deployment):
         app_name = deployment.app
-        logger.info('Installing %s %s %s',
-                    app_name, deployment.path, deployment.n)
         if not os.path.exists(self._path('etc', app_name)):
             os.mkdir(self._path('etc', app_name))
         script = self._path(
@@ -386,8 +381,6 @@ class Agent(object):
                                            version))
                             self._uninstall(rpm_name)
 
-                        logger.info("Checkout %s (%s)" % (rpm_name, version))
-
                         zc.zkdeployment.run_command(
                             ['svn', 'co', version, self._path('opt', rpm_name)],
                             verbose=self.verbose, return_output=False)
@@ -416,7 +409,6 @@ class Agent(object):
                                 verbose=self.verbose, return_output=False)
                         clean = True
 
-                    logger.info("Installing RPM " + rpm_name)
                     zc.zkdeployment.run_command(
                         ['yum', '-y', 'install', rpm_name],
                         verbose=self.verbose, return_output=False)
@@ -453,7 +445,6 @@ class Agent(object):
                         logger.exception('Removing %r', '/etc/' + app_name)
 
             if os.path.exists(self._path('etc', 'init.d', 'zimagent')):
-                logger.info("Restarting zimagent")
                 zc.zkdeployment.run_command(
                     ['/etc/init.d/zimagent', 'restart'],
                     verbose=self.verbose, return_output=False)
