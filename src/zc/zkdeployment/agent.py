@@ -563,7 +563,7 @@ def main(args=None):
     options, args = parser.parse_args(args)
     assert not args
     logging.basicConfig(
-        level=logging.DEBUG if options.verbose else logging.INFO,
+        level=logging.INFO,
         format='%(asctime)s %(name)s %(levelname)s %(message)s'
         )
     ZK_LOCATION = 'zookeeper:2181'
