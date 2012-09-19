@@ -36,6 +36,7 @@ import zc.zk.testing
 import zc.zkdeployment.agent
 import zim.config # XXX zim duz way too much on import. :( Do it now.
 import zope.testing.setupstack
+import zope.testing.renormalizing
 
 start_with_digit = re.compile('\d').match
 stage_build_path = re.compile('(/opt/\w+/stage-build)$').search
@@ -273,7 +274,7 @@ def test_run_bad_command():
     If the command passed to run command doesn't exist, we need an error report:
 
     >>> import zc.zkdeployment
-    >>> zc.zkdeployment.run_command(['wtf111111111111'])
+    >>> zc.zkdeployment.run_command(['wtf111111111111'], return_output=True)
     Traceback (most recent call last):
     ...
     OSError: [Errno 2] No such file or directory
@@ -350,15 +351,17 @@ def test_non_empty_etc():
     INFO Agent starting, cluster 1, host None
     INFO ============================================================
     INFO Deploying version 1
+    INFO yum -q list installed z4m
     yum -q list installed z4m
+    INFO yum -q list installed z4mmonitor
     yum -q list installed z4mmonitor
-    INFO Installing z4m /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO Installing z4mmonitor /cust/someapp/monitor 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust/someapp/monitor 0
-    INFO Installing z4m /cust2/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 1
 
@@ -373,20 +376,21 @@ def test_non_empty_etc():
     ... # doctest: +ELLIPSIS
     INFO ============================================================
     INFO Deploying version 2
-    INFO Removing z4m /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
-    INFO Removing z4mmonitor /cust/someapp/monitor 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    INFO yum -q list installed z4m
     yum -q list installed z4m
-    INFO Installing z4m /cust2/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
-    INFO Removing RPM z4mmonitor
+    INFO yum -y remove z4mmonitor
     yum -y remove z4mmonitor
     ERROR Removing u'/etc/z4mmonitor'
     Traceback (most recent call last):
     ...
-    OSError:...Directory not empty: ...
-    INFO Restarting zimagent
+    OSError: [Errno 39] Directory not empty: /etc/z4mmonitor'
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 2
 
@@ -417,21 +421,23 @@ We also were cleaning up etc directories when we shouldn't have.
     ...     zk.properties('/hosts').update(version=2); time.sleep(.50)
     INFO ============================================================
     INFO Deploying version 2
-    INFO Removing z4m /cust2/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
-    INFO Removing z4mmonitor /cust/someapp/monitor 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    INFO yum -y clean all
     yum -y clean all
-    INFO Installing RPM z4m-4.0.0
+    INFO yum -y install z4m-4.0.0
     yum -y install z4m-4.0.0
+    INFO yum -q list installed z4m-4.0.0
     yum -q list installed z4m-4.0.0
-    INFO Installing z4m /cust/someapp/cms 0
+    INFO /opt/z4m-4.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m-4.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO Removing RPM z4m
+    INFO yum -y remove z4m
     yum -y remove z4m
-    INFO Removing RPM z4mmonitor
+    INFO yum -y remove z4mmonitor
     yum -y remove z4mmonitor
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 2
 
@@ -449,18 +455,19 @@ Let's switch back for good measure (and to see if we're getting paths right:
     ...     zk.properties('/hosts').update(version=3); time.sleep(.50)
     INFO ============================================================
     INFO Deploying version 3
+    INFO yum -y clean all
     yum -y clean all
-    INFO Installing RPM z4m-2.0.0
+    INFO yum -y install z4m-2.0.0
     yum -y install z4m-2.0.0
+    INFO yum -q list installed z4m
     yum -q list installed z4m
-    INFO Installing z4m /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO Removing RPM z4m-4.0.0
+    INFO yum -y remove z4m-4.0.0
     yum -y remove z4m-4.0.0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 3
-
 
 And finally, remove, which should clean up the etc dir:
 
@@ -470,11 +477,11 @@ And finally, remove, which should clean up the etc dir:
     ...     zk.properties('/hosts').update(version=4); time.sleep(.50)
     INFO ============================================================
     INFO Deploying version 4
-    INFO Removing z4m /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
-    INFO Removing RPM z4m
+    INFO yum -y remove z4m
     yum -y remove z4m
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 4
 
@@ -546,21 +553,23 @@ Set up with one url:
     ...     zk.properties('/hosts').update(version=2); time.sleep(.50)
     INFO ============================================================
     INFO Deploying version 2
-    INFO Removing z4m /cust2/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
-    INFO Removing z4mmonitor /cust/someapp/monitor 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    INFO yum -q list installed z4m
     yum -q list installed z4m
-    INFO Removing RPM z4m
+    INFO yum -y remove z4m
     yum -y remove z4m
-    INFO Checkout z4m (svn+ssh://svn.zope.com/repos/main/z4m/trunk)
+    INFO svn co svn+ssh://svn.zope.com/repos/main/z4m/trunk /opt/z4m
     INFO Build z4m (svn+ssh://svn.zope.com/repos/main/z4m/trunk)
+    INFO /opt/z4m/stage-build
     /opt/z4m/stage-build
-    INFO Installing z4m /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO Removing RPM z4mmonitor
+    INFO yum -y remove z4mmonitor
     yum -y remove z4mmonitor
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 2
 
@@ -580,17 +589,19 @@ Then switch to another:
     ... # doctest: +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 3
-    INFO Removing conflicting checkout
-    'svn+ssh://svn.zope.com/repos/main/z4m/trunk' !=
-    u'svn+ssh://svn.zope.com/repos/main/z4m/branches/x'
-    INFO Checkout z4m (svn+ssh://svn.zope.com/repos/main/z4m/branches/x)
-    INFO Build z4m (svn+ssh://svn.zope.com/repos/main/z4m/branches/x) 
+    INFO svn info /opt/z4m
+    INFO svn info /opt/z4m
+    INFO Removing conflicting checkout 'svn+ssh://svn.zope.com/repos/main/z4m/trunk' != u'svn+ssh://svn.zope.com/repos/main/z4m/branches/x'
+    INFO svn co svn+ssh://svn.zope.com/repos/main/z4m/branches/x /opt/z4m
+    INFO Build z4m (svn+ssh://svn.zope.com/repos/main/z4m/branches/x)
+    INFO /opt/z4m/stage-build
     /opt/z4m/stage-build
-    INFO Installing z4m /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 3
+
     """
 
 class TestStream:
@@ -601,6 +612,8 @@ class TestStream:
 def setUp(test):
     zope.testing.setupstack.setUpDirectory(test)
     zc.zk.testing.setUp(test, initial_tree, connection_string='zookeeper:2181')
+    os.mkdir('TEST_ROOT')
+    os.chdir('TEST_ROOT')
     os.environ['TEST_ROOT'] = os.getcwd()
     zope.testing.setupstack.register(
         test, lambda : zc.zk.testing.tearDown(test))
@@ -630,9 +643,13 @@ def setUp(test):
 
 def test_suite():
     suite = unittest.TestSuite()
+    checker = zope.testing.renormalizing.RENormalizing([
+        (re.compile(r'\S+TEST_ROOT'), ''),
+        ])
     suite.addTest(
         manuel.testing.TestSuite(
             manuel.doctest.Manuel(
+                checker=checker,
                 optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE
                 ) +
             manuel.capture.Manuel(),
@@ -642,7 +659,7 @@ def test_suite():
             ))
     suite.addTest(
         doctest.DocTestSuite(
-            setUp=setUp,
+            checker=checker, setUp=setUp,
             tearDown=zope.testing.setupstack.tearDown,
             ))
 

@@ -126,16 +126,17 @@ installation script for everything that's installed:
     >>> bump_version()
     INFO ============================================================
     INFO Deploying version 2
-    INFO Removing z4mmonitor /cust/someapp/monitor 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    INFO yum -q list installed z4m
     yum -q list installed z4m
-    INFO Installing z4m /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO Installing z4m /cust2/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
-    INFO Removing RPM z4mmonitor
+    INFO yum -y remove z4mmonitor
     yum -y remove z4mmonitor
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 2
 
@@ -179,18 +180,21 @@ Here, we're installing a new monitor for cust2
     >>> bump_version()
     INFO ============================================================
     INFO Deploying version 3
+    INFO yum -q list installed z4m
     yum -q list installed z4m
+    INFO yum -y clean all
     yum -y clean all
-    INFO Installing RPM z4mmonitor-1.1.0
+    INFO yum -y install z4mmonitor-1.1.0
     yum -y install z4mmonitor-1.1.0
+    INFO yum -q list installed z4mmonitor
     yum -q list installed z4mmonitor
-    INFO Installing z4m /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO Installing z4m /cust2/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
-    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 3
 
@@ -222,15 +226,17 @@ RPM is not uninstalled.
     >>> bump_version()
     INFO ============================================================
     INFO Deploying version 4
-    INFO Removing z4m /cust2/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
+    INFO yum -q list installed z4m
     yum -q list installed z4m
+    INFO yum -q list installed z4mmonitor
     yum -q list installed z4mmonitor
-    INFO Installing z4m /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 4
 
@@ -265,19 +271,21 @@ Now, when we update the version, the 3 deployments will be installed.
     >>> bump_version()
     INFO ============================================================
     INFO Deploying version 5
+    INFO yum -q list installed z4m
     yum -q list installed z4m
+    INFO yum -q list installed z4mmonitor
     yum -q list installed z4mmonitor
-    INFO Installing z4m /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO Installing z4m /cust2/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
-    INFO Installing z4m /cust2/someapp/cms 1
+    INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 1
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 1
-    INFO Installing z4m /cust2/someapp/cms 2
+    INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 2
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 2
-    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 5
 
@@ -304,19 +312,21 @@ the extra instances will be removed:
     >>> bump_version()
     INFO ============================================================
     INFO Deploying version 6
-    INFO Removing z4m /cust2/someapp/cms 1
+    INFO /opt/z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 1
     z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 1
-    INFO Removing z4m /cust2/someapp/cms 2
+    INFO /opt/z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 2
     z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 2
+    INFO yum -q list installed z4m
     yum -q list installed z4m
+    INFO yum -q list installed z4mmonitor
     yum -q list installed z4mmonitor
-    INFO Installing z4m /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO Installing z4m /cust2/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
-    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 6
 
@@ -351,19 +361,23 @@ yum will install the newer version before updating the deployment.
     >>> bump_version()
     INFO ============================================================
     INFO Deploying version 7
+    INFO yum -q list installed z4m
     yum -q list installed z4m
+    INFO yum -y clean all
     yum -y clean all
-    INFO Installing RPM z4m-2.0.0
+    INFO yum -y install z4m-2.0.0
     yum -y install z4m-2.0.0
+    INFO yum -q list installed z4m
     yum -q list installed z4m
+    INFO yum -q list installed z4mmonitor
     yum -q list installed z4mmonitor
-    INFO Installing z4m /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO Installing z4m /cust2/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
-    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 7
 
@@ -436,22 +450,26 @@ Note that now we can have different instances use different versions.
 ``cust`` is upgraded to ``4.0.0``, but ``cust2`` is still running
 ``3.0.0``.
 
-    >>> bump_version() # doctest: +ELLIPSIS
+    >>> bump_version()
     INFO ============================================================
     INFO Deploying version 9
+    INFO yum -q list installed z4m
     yum -q list installed z4m
+    INFO yum -y clean all
     yum -y clean all
-    INFO Installing RPM z4m-4.0.0
+    INFO yum -y install z4m-4.0.0
     yum -y install z4m-4.0.0
+    INFO yum -q list installed z4m-4.0.0
     yum -q list installed z4m-4.0.0
+    INFO yum -q list installed z4mmonitor
     yum -q list installed z4mmonitor
-    INFO Installing z4m /cust/someapp/cms 0
+    INFO /opt/z4m-4.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m-4.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO Installing z4m /cust2/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
-    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 9
 
@@ -486,21 +504,25 @@ The old rpm gets removed:
     >>> bump_version()
     INFO ============================================================
     INFO Deploying version 10
+    INFO yum -q list installed z4m
     yum -q list installed z4m
+    INFO yum -y clean all
     yum -y clean all
-    INFO Installing RPM z4m-5.0.0
+    INFO yum -y install z4m-5.0.0
     yum -y install z4m-5.0.0
+    INFO yum -q list installed z4m-5.0.0
     yum -q list installed z4m-5.0.0
+    INFO yum -q list installed z4mmonitor
     yum -q list installed z4mmonitor
-    INFO Installing z4m /cust/someapp/cms 0
+    INFO /opt/z4m-5.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m-5.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO Installing z4m /cust2/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
-    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO Removing RPM z4m-4.0.0
+    INFO yum -y remove z4m-4.0.0
     yum -y remove z4m-4.0.0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 10
 
@@ -534,16 +556,19 @@ In the tree above, the we've replaced the host id with the host name.
     >>> bump_version()
     INFO ============================================================
     INFO Deploying version 11
+    INFO yum -q list installed z4m
     yum -q list installed z4m
+    INFO yum -q list installed z4m-5.0.0
     yum -q list installed z4m-5.0.0
+    INFO yum -q list installed z4mmonitor
     yum -q list installed z4mmonitor
-    INFO Installing z4m /cust/someapp/cms 0
+    INFO /opt/z4m-5.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m-5.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO Installing z4m /cust2/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
-    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 11
 
@@ -578,16 +603,19 @@ Our host agent will ignore the deployment::
     >>> bump_version()
     INFO ============================================================
     INFO Deploying version 12
+    INFO yum -q list installed z4m
     yum -q list installed z4m
+    INFO yum -q list installed z4m-5.0.0
     yum -q list installed z4m-5.0.0
+    INFO yum -q list installed z4mmonitor
     yum -q list installed z4mmonitor
-    INFO Installing z4m /cust/someapp/cms 0
+    INFO /opt/z4m-5.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m-5.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO Installing z4m /cust2/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
-    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 12
 
@@ -653,16 +681,19 @@ And we're good::
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 14
+    INFO yum -q list installed z4m
     yum -q list installed z4m
+    INFO yum -q list installed z4m-5.0.0
     yum -q list installed z4m-5.0.0
+    INFO yum -q list installed z4mmonitor
     yum -q list installed z4mmonitor
-    INFO Installing z4m /cust/someapp/cms 0
+    INFO /opt/z4m-5.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m-5.0.0/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO Installing z4m /cust2/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
-    INFO Installing z4mmonitor /cust2/someapp/monitor 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 14
 
@@ -754,27 +785,29 @@ The deployment goes through, and the host reconfigures itself as a cache.
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 16
-    INFO Removing z4m /cust2/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
-    INFO Removing z4m /cust/someapp/cms 0
+    INFO /opt/z4m-5.0.0/bin/zookeeper-deploy -u /cust/someapp/cms 0
     z4m-5.0.0/bin/zookeeper-deploy -u /cust/someapp/cms 0
-    INFO Removing z4mmonitor /cust2/someapp/monitor 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy -u /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy -u /cust2/someapp/monitor 0
+    INFO yum -y clean all
     yum -y clean all
-    INFO Installing RPM squid-2.0
+    INFO yum -y install squid-2.0
     yum -y install squid-2.0
+    INFO yum -q list installed squid
     yum -q list installed squid
-    INFO Installing squid /cust/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust/someapp/cache 0
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
-    INFO Installing squid /cust2/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO Removing RPM z4m
+    INFO yum -y remove z4m
     yum -y remove z4m
-    INFO Removing RPM z4m-5.0.0
+    INFO yum -y remove z4m-5.0.0
     yum -y remove z4m-5.0.0
-    INFO Removing RPM z4mmonitor
+    INFO yum -y remove z4mmonitor
     yum -y remove z4mmonitor
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 16
 
@@ -785,22 +818,20 @@ output.
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 17
+    INFO yum -q list installed squid
     yum -q list installed squid
-    INFO Command succeeded: [u'yum', u'-q', u'list', u'installed', u'squid']
-      Installed Packages
-      squid 	2.0-1 	installed
-    INFO Installing squid /cust/someapp/cache 0
+    Installed Packages
+    squid 	2.0-1 	installed
+    INFO SUCCESS
+    INFO /opt/squid/bin/zookeeper-deploy /cust/someapp/cache 0
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
-    INFO Command succeeded: [u'.../opt/squid/bin/zookeeper-deploy', '/cust/someapp/cache', '0']
-    <BLANKLINE>
-    INFO Installing squid /cust2/someapp/cache 0
+    INFO SUCCESS
+    INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO Command succeeded: [u'.../opt/squid/bin/zookeeper-deploy', '/cust2/someapp/cache', '0']
-    <BLANKLINE>
-    INFO Restarting zimagent
+    INFO SUCCESS
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
-    INFO Command succeeded: ['/etc/init.d/zimagent', 'restart']
-    <BLANKLINE>
+    INFO SUCCESS
     INFO Done deploying version 17
 
     >>> agent.verbose = False
@@ -825,12 +856,13 @@ Let's switch back to an active agent:
     INFO Agent starting, cluster 18, host 17
     INFO ============================================================
     INFO Deploying version 18
+    INFO yum -q list installed squid
     yum -q list installed squid
-    INFO Installing squid /cust/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust/someapp/cache 0
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
-    INFO Installing squid /cust2/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 18
 
@@ -863,12 +895,14 @@ Here, the squid version is bad:
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 19
+    INFO yum -q list installed squid
     yum -q list installed squid
+    INFO yum -y clean all
     yum -y clean all
-    INFO Installing RPM squid-bad
+    INFO yum -y install squid-bad
     yum -y install squid-bad
-    ERROR Command failed: ['yum', '-y', 'install', u'squid-bad']
-          Error: Couldn't find package squid-bad
+    Error: Couldn't find package squid-bad
+    ERROR FAILURE
     ERROR deploying
     Traceback (most recent call last):
     ...
@@ -902,21 +936,23 @@ Now, we'll install a cranky app::
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 20
+    INFO yum -y clean all
     yum -y clean all
-    INFO Installing RPM cranky-1.0
+    INFO yum -y install cranky-1.0
     yum -y install cranky-1.0
+    INFO yum -q list installed cranky
     yum -q list installed cranky
+    INFO yum -q list installed squid
     yum -q list installed squid
-    INFO Installing cranky /cust/someapp/acrank 0
+    INFO /opt/cranky/bin/zookeeper-deploy /cust/someapp/acrank 0
     cranky/bin/zookeeper-deploy /cust/someapp/acrank 0
-    ERROR Command failed: [u'.../opt/cranky/bin/zookeeper-deploy',
-        '/cust/someapp/acrank', '0']
-          waaaaaaaaaaaa
+    waaaaaaaaaaaa
+    ERROR FAILURE
     ERROR deploying
     Traceback (most recent call last):
     ...
-    RuntimeError: Command failed: ...opt/cranky/bin/zookeeper-deploy
-        /cust/someapp/acrank 0
+    RuntimeError: Command failed:
+        /opt/cranky/bin/zookeeper-deploy /cust/someapp/acrank 0
     CRITICAL FAILED deploying version 20
 
 Let's remove the cranky app::
@@ -943,14 +979,15 @@ Everything's fixed now.
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 21
+    INFO yum -q list installed squid
     yum -q list installed squid
-    INFO Installing squid /cust/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust/someapp/cache 0
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
-    INFO Installing squid /cust2/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO Removing RPM cranky
+    INFO yum -y remove cranky
     yum -y remove cranky
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 21
 
@@ -1017,12 +1054,13 @@ The agent updates itself to version 19.
     INFO Agent starting, cluster 19, host 21
     INFO ============================================================
     INFO Deploying version 19
+    INFO yum -q list installed squid
     yum -q list installed squid
-    INFO Installing squid /cust/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust/someapp/cache 0
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
-    INFO Installing squid /cust2/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 19
 
@@ -1058,17 +1096,19 @@ When the software is deployed, it will get built out correctly.
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 22
-    INFO Checkout pywrite (svn+ssh://svn.zope.com/repos/main/pywrite/trunk)
+    INFO svn co svn+ssh://svn.zope.com/repos/main/pywrite/trunk /opt/pywrite
     INFO Build pywrite (svn+ssh://svn.zope.com/repos/main/pywrite/trunk)
+    INFO /opt/pywrite/stage-build
     /opt/pywrite/stage-build
+    INFO yum -q list installed squid
     yum -q list installed squid
-    INFO Installing squid /cust/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust/someapp/cache 0
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
-    INFO Installing pywrite /cust/someapp/rewriter 0
+    INFO /opt/pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
     pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
-    INFO Installing squid /cust2/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 22
 
@@ -1078,17 +1118,20 @@ On update, it will check out the software again, pulling in any new changes.
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 23
-    INFO Checkout pywrite (svn+ssh://svn.zope.com/repos/main/pywrite/trunk)
+    INFO svn info /opt/pywrite
+    INFO svn co svn+ssh://svn.zope.com/repos/main/pywrite/trunk /opt/pywrite
     INFO Build pywrite (svn+ssh://svn.zope.com/repos/main/pywrite/trunk)
+    INFO /opt/pywrite/stage-build
     /opt/pywrite/stage-build
+    INFO yum -q list installed squid
     yum -q list installed squid
-    INFO Installing squid /cust/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust/someapp/cache 0
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
-    INFO Installing pywrite /cust/someapp/rewriter 0
+    INFO /opt/pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
     pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
-    INFO Installing squid /cust2/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 23
 
@@ -1119,15 +1162,16 @@ Now the software will get removed:
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 24
-    INFO Removing pywrite /cust/someapp/rewriter 0
+    INFO /opt/pywrite/bin/zookeeper-deploy -u /cust/someapp/rewriter 0
     pywrite/bin/zookeeper-deploy -u /cust/someapp/rewriter 0
+    INFO yum -q list installed squid
     yum -q list installed squid
-    INFO Installing squid /cust/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust/someapp/cache 0
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
-    INFO Installing squid /cust2/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     INFO Removing svn checkout pywrite
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 24
 
@@ -1156,7 +1200,7 @@ If we switch from svn to rpm, the svn directory will be removed first::
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 25
-    INFO Checkout pywrite (svn+ssh://svn.zope.com/repos/main/pywrite/trunk)
+    INFO svn co svn+ssh://svn.zope.com/repos/main/pywrite/trunk /opt/pywrite
     ...
 
 ::
@@ -1185,8 +1229,9 @@ If we switch from svn to rpm, the svn directory will be removed first::
     INFO ============================================================
     INFO Deploying version 26
     INFO Removing svn checkout pywrite
+    INFO yum -y clean all
     yum -y clean all
-    INFO Installing RPM pywrite-3.0
+    INFO yum -y install pywrite-3.0
     ...
 
 Now, remove the deployment again::
@@ -1364,14 +1409,16 @@ When we send our state, we'll get an INFO message:
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 29
+    INFO yum -q list installed squid
     yum -q list installed squid
-    INFO Installing squid /cust/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust/someapp/cache 0
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
-    INFO Installing squid /cust2/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO Restarting zimagent
+    INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 29
+
     >>> monitor.send_state()
     /zkdeploy/agent
     INFO
@@ -1461,14 +1508,14 @@ error:
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 30
+    INFO yum -q list installed squid
     yum -q list installed squid
-    INFO Installing squid /cust/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust/someapp/cache 0
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
-    INFO Installing squid /cust2/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     WARNING No zimagent. I hope you're screwing around. :)
     INFO Done deploying version 30
-
 
 Handling missing /etc/APP directories
 =====================================
@@ -1484,10 +1531,11 @@ To illustrate, we'll create a bogus application in /opt:
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 31
+    INFO yum -q list installed squid
     yum -q list installed squid
-    INFO Installing squid /cust/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust/someapp/cache 0
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
-    INFO Installing squid /cust2/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     INFO Removing svn checkout badapp
     WARNING No zimagent. I hope you're screwing around. :)
@@ -1511,10 +1559,11 @@ emphemeral node::
     INFO Agent starting, cluster 1, host 31
     INFO ============================================================
     INFO Deploying version 1
+    INFO yum -q list installed squid
     yum -q list installed squid
-    INFO Installing squid /cust/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust/someapp/cache 0
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
-    INFO Installing squid /cust2/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     WARNING No zimagent. I hope you're screwing around. :)
     INFO Done deploying version 1
@@ -1561,12 +1610,15 @@ of zero, so we need to check after the install that it really happened.
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 32
-    INFO Removing squid /cust2/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy -u /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy -u /cust2/someapp/cache 0
+    INFO yum -q list installed squid
     yum -q list installed squid
+    INFO yum -y clean all
     yum -y clean all
-    INFO Installing RPM squid-666
+    INFO yum -y install squid-666
     yum -y install squid-666
+    INFO yum -q list installed squid
     yum -q list installed squid
     ERROR deploying
     Traceback (most recent call last):
@@ -1590,10 +1642,11 @@ of zero, so we need to check after the install that it really happened.
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 33
-    INFO Removing squid /cust/someapp/cache 0
+    INFO /opt/squid/bin/zookeeper-deploy -u /cust/someapp/cache 0
     squid/bin/zookeeper-deploy -u /cust/someapp/cache 0
+    INFO yum -y clean all
     yum -y clean all
-    INFO Installing RPM varnish-666
+    INFO yum -y install varnish-666
     yum -y install varnish-666
     ERROR deploying
     Traceback (most recent call last):
