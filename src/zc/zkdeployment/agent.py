@@ -10,7 +10,6 @@ import signal
 import simplejson
 import socket
 import sys
-import threading
 import time
 import zc.thread
 import zc.time
@@ -469,11 +468,15 @@ class Agent(object):
             self.failing = False
 
     def run(self):
-        event = threading.Event()
-        def handle_signal(signum, frame):
-            event.set()
+        def handle_signal(*args):
+            self.close()
+            sys.exit(0)
         signal.signal(signal.SIGTERM, handle_signal)
-        event.wait()
+        signallableblock()
+
+def signallableblock():
+    while 1:
+        time.sleep(99999)
 
 class Monitor(object):
 
@@ -544,6 +547,7 @@ class Monitor(object):
 
 
     def shutdown(self):
+        self.agent.close()
         self.state = 'INFO'
         uris = [self.uri]
         body = simplejson.dumps({'interval': self.interval, 'uris': uris})

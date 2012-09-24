@@ -1443,6 +1443,10 @@ a 'unmanaging' event.
     ANNOUNCE: unmanaging
     {"interval": 300, "uris": ["/zkdeploy/agent"]}
 
+It also shuts down the agent:
+
+    >>> agent.zk.handle
+
 Once the monitor exists, you can start its periodic sending of zim events with
 the `run` method.  `run` will first send a `managing` announcement, followed by
 periodic presence and status announcements.  When it gets a SIGTERM or
@@ -1451,6 +1455,8 @@ KeyboardInterrupt, it will unregister itself from zim and shut down.
 Here, we'll see what happens when we give it a KeyboardInterrupt during the
 send_state call:
 
+    >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(wait)
+    INFO Agent starting, cluster 29, host 29
     >>> with mock.patch.object(
     ...         zc.zkdeployment.agent.Monitor, 'send_state') as mocked_send_state:
     ...     mocked_send_state.side_effect = KeyboardInterrupt
@@ -1468,6 +1474,8 @@ send_state call:
     ANNOUNCE: unmanaging
     {"interval": 300, "uris": ["/zkdeploy/agent"]}
 
+    >>> agent.zk.handle
+
 The monitor successfully unregistered itself.
 
 The same will happen when we send a SIGTERM signal.  Note that we manually call
@@ -1478,6 +1486,8 @@ sys.exit() in our signal handler, since the run loop won't terminate otherwise:
     ...     os.kill(os.getpid(), signal.SIGTERM)
     >>> class SysExit(Exception):
     ...     pass
+    >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(wait)
+    INFO Agent starting, cluster 29, host 29
     >>> with mock.patch.object(
     ...         zc.zkdeployment.agent.Monitor, 'send_state') as mocked_send_state:
     ...     mocked_send_state.side_effect = send_sigterm
@@ -1505,6 +1515,8 @@ If there isn't a zimagent run script, you'll get a warning, but not an
 error:
 
     >>> os.remove(os.path.join('etc', 'init.d', 'zimagent'))
+    >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(wait)
+    INFO Agent starting, cluster 29, host 29
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 30

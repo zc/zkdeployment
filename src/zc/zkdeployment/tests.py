@@ -520,15 +520,20 @@ def agent_run():
     """
     >>> import signal
     >>> agent = zc.zkdeployment.agent.Agent()
+    >>> agent.zk.handle
+    0
     >>> with mock.patch('signal.signal'):
-    ...      thread = zc.thread.Thread(agent.run)
-    ...      thread.join(.1)
-    ...      assert_(thread.is_alive())
+    ...   with mock.patch('zc.zkdeployment.agent.signallableblock') as block:
+    ...      agent.run()
+    ...      block.assert_called_with()
     ...      num, func = signal.signal.call_args[0]
     ...      assert_(num == signal.SIGTERM)
-    ...      func(None, None)
-    ...      thread.join(.1)
-    ...      assert_(not thread.is_alive())
+    ...      try: func(None, None)
+    ...      except SystemExit: pass
+    ...      else: assert_(False)
+
+    The agent's zk connection is closed
+    >>> agent.zk.handle
     """
 
 def switching_subversion_urls():
