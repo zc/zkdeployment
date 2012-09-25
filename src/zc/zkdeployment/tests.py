@@ -650,6 +650,7 @@ def test_suite():
     suite = unittest.TestSuite()
     checker = zope.testing.renormalizing.RENormalizing([
         (re.compile(r'\S+TEST_ROOT'), ''),
+        (re.compile(r'INFO DEBUG: [^\n]+\n'), ''),
         ])
     suite.addTest(
         manuel.testing.TestSuite(

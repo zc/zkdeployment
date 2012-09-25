@@ -316,6 +316,8 @@ class Agent(object):
 
             deployments = set(self.get_deployments())
 
+            logger.info("DEBUG: got deployments")
+
             ############################################################
             # Gather versions to deploy, checking for conflicts.  Note
             # that conflicts boil down to trying to install 2
@@ -350,6 +352,8 @@ class Agent(object):
             #
             ############################################################
 
+            logger.info("DEBUG: remove old deployments")
+
             # Remove installed deployments that aren't in zk
             installed_apps = set()
             for deployment in sorted(self.get_installed_deployments()):
@@ -358,6 +362,8 @@ class Agent(object):
                     not in to_deploy):
                     self.remove_deployment(deployment)
 
+
+            logger.info("DEBUG: update software")
 
             # update app software, if necessary
             clean = False
