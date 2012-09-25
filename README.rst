@@ -576,6 +576,22 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.5.1 (2012-09-25)
+------------------
+
+- Added temporary debug logging to debug an intermittent hang.
+
+- Fixed: In "staging" mode, signals weren't handled properly, making
+  restarts take too long.
+
+0.5.0 (2012-09-19)
+------------------
+
+- Refactored logging  output to get output in real time, rather than
+  waiting for sub-processes to finish.
+
+- Don't log at DEBUG logging as ZooKeeper debug logging is too annoying.
+
 0.4.1 (2012-09-06)
 ------------------
 
