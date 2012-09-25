@@ -154,16 +154,6 @@ used:
    The version is not allowed to include dashes.  The agent will split
    the type on the last dash to get the application name.
 
-Patches
--------
-
-For both of the above cases, we can have patches.  Patches are ordered
-and applied sequentially.  The list of patches are considered part of
-the version.  A given host can have only one combination of version
-and patches.
-
-See `Patch deployments`_ below.
-
 
 Hosts and host versions
 =======================
@@ -470,49 +460,6 @@ having a different idea of what the majority is.
 
 Maybe we'll fix our apps that provoke this case so we don't have to
 implement it. :)
-
-Patch updates
--------------
-
-We'll store patches in a designated S3 bucket.  To deploy a patch,
-add or update a patches property::
-
-   /who
-     /myfoo : foo bar
-       version = '1.1'
-       patches = ['foo-1.1-p1']
-       fuzz = 1
-       /providers
-         /app.example.com:12345
-            pid = 1000
-         /app.example.com:12346
-            pid = 1001
-       /deploy
-         /app.example.com
-            n = 2
-
-The agent will apply the patch and then run the installation
-scripts.  It will record that the patch was made.  If there are
-multiple patches, it will apply them in sequence. So, to add
-another patch::
-
-   /who
-     /myfoo : foo bar
-       version = '1.1'
-       patches = ['foo-1.1-p1', 'foo-1.1-p2']
-       fuzz = 1
-       /providers
-         /app.example.com:12345
-            pid = 1000
-         /app.example.com:12346
-            pid = 1001
-       /deploy
-         /app.example.com
-            n = 2
-
-When the agent sees this it will apply just the second patch. It
-won't apply the first patch because it will have recorded that the
-patch was applied.
 
 Parallelization
 ---------------
