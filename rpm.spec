@@ -49,60 +49,6 @@ rm -rf $RPM_BUILD_DIR/%{source}
 %pre
 rm -rf /opt/%{name}/eggs/setuptools*
 
-%posttrans
-if [[ ! -d /etc/%{name} ]]
-then
-   mkdir /etc/%{name}
-fi
-
-echo "
-[buildout]
-parts = rc agent.cfg
-
-[deployment]
-recipe = zc.recipe.deployment
-name = zookeeper-deployment
-user = root
-
-[rc]
-recipe = zc.recipe.rhrc
-deployment = deployment
-parts = agent
-process-management = true
-chkconfig = 345 90 10
-
-[agent]
-recipe = zc.zdaemonrecipe
-deployment = deployment
-program = \${buildout:bin-directory}/agent -v
-zdaemon.conf =
-  <runner>
-    logfile \${deployment:log-directory}/agent.log
-  </runner>
-
-[agent.cfg]
-recipe = zc.recipe.deployment:configuration
-text = 
-  \${deployment:log-directory}/agent.log {
-    rotate 5
-    weekly
-    compress
-    postrotate
-      \${deployment:rc-directory} \
-          -C \${deployment:rc-directory}/agent-zdaemon.conf \
-          reopen_transcript
-    endscript
-  }
-
-" > /etc/%{name}/zkdeployment.cfg
-
-/usr/local/bin/sbo zkdeployment
-
-%preun
-/usr/local/bin/sbo -u zkdeployment
-rm -rf /etc/%{name} /var/log/zookeeper-deployment
-
-
 %files
 %defattr(-, root, root)
 /opt/%{name}
