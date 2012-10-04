@@ -576,6 +576,11 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.6.0 (2012-10-04)
+------------------
+
+Don't include process configuration in RPM.
+
 0.5.1 (2012-09-25)
 ------------------
 
