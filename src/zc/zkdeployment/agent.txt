@@ -9,6 +9,9 @@ updates to reflect what's in a tree.
 Agents can determine their own host identifier.  The host identifier
 comes from /etc/zmh/pxemac.
 
+Low-level machinery
+-------------------
+
 Create an agent:
 
     >>> import mock
@@ -86,6 +89,9 @@ This is compared with the installed applications on its host:
                            path='/cust2/someapp/cms', n=0),
      UnversionedDeployment(app=u'z4mmonitor', rpm_name=u'z4mmonitor',
                            path='/cust/someapp/monitor', n=0)]
+
+Basic updates
+-------------
 
 OK, we've demonstrated some of the pieces.  Now let's try making a
 change.  Let change the application parts of the tree::
@@ -240,6 +246,9 @@ RPM is not uninstalled.
     /etc/init.d/zimagent restart
     INFO Done deploying version 4
 
+Multiple deployments if the same node
+-------------------------------------
+
 You can also specify multiple deployments of a given type by using the
 ``n`` property.  Here, we'll configure 3 z4m instances for cust2::
 
@@ -330,6 +339,8 @@ the extra instances will be removed:
     /etc/init.d/zimagent restart
     INFO Done deploying version 6
 
+Software versions
+-----------------
 
 If we update z4m to a newer version::
 
@@ -380,7 +391,6 @@ yum will install the newer version before updating the deployment.
     INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 7
-
 
 If our zookeeper tree has conflicting versions for a given app::
 
@@ -525,6 +535,9 @@ The old rpm gets removed:
     INFO /etc/init.d/zimagent restart
     /etc/init.d/zimagent restart
     INFO Done deploying version 10
+
+Host names
+----------
 
 In the examples above, we've used host ids.  We can also use host
 names::
@@ -697,6 +710,9 @@ And we're good::
     /etc/init.d/zimagent restart
     INFO Done deploying version 14
 
+Roles
+-----
+
 A host can be configured by role, instead of by host id (or name).
 If a host has a role, then it will only be configured by role.  This
 ensures that host of a given role are configured identically.
@@ -811,6 +827,9 @@ The deployment goes through, and the host reconfigures itself as a cache.
     /etc/init.d/zimagent restart
     INFO Done deploying version 16
 
+Verbose mode
+------------
+
 If we set the "verbose" flag on the agent, it will log even successful command
 output.
 
@@ -835,6 +854,9 @@ output.
     INFO Done deploying version 17
 
     >>> agent.verbose = False
+
+Run once
+--------
 
 We can also create an agent that will do a single deployment and then quit.
 
@@ -995,6 +1017,9 @@ We're done with this agent.
 
     >>> agent.close()
 
+Deregistration (ephemeral host nodes)
+-------------------------------------
+
 When the agent closes, it's host node goes away:
 
     >>> zk.print_tree()
@@ -1066,6 +1091,9 @@ The agent updates itself to version 19.
 
     >>> agent.version
     19
+
+Subversion
+----------
 
 The agent can also accept an svn location instead of a version.  In this case,
 it will do a subversion checkout of the location and build out the software::
@@ -1665,7 +1693,6 @@ of zero, so we need to check after the install that it really happened.
     ...
     SystemError: Failed to install varnish-666 (installed: None)
     CRITICAL FAILED deploying version 33
-
 
 
 .. tear down
