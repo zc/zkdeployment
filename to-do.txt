@@ -1,4 +1,10 @@
 
+- yum clean expire-cache
+
+  instead of yum clean all
+
+  faster
+
 - zc.zk
 
   - Fix property links:
