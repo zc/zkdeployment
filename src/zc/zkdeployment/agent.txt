@@ -73,11 +73,12 @@ When an agent notices a change, it first collects a collection of all
 of the deployments:
 
     >>> sorted(agent.get_deployments())
-    [Deployment(app=u'z4m', version=u'1.0.0', rpm_name=u'z4m',
+    [Deployment(app=u'z4m', subtype=None, version=u'1.0.0', rpm_name=u'z4m',
                 path='/cust/someapp/cms', n=0),
-     Deployment(app=u'z4m', version=u'1.0.0', rpm_name=u'z4m',
+     Deployment(app=u'z4m', subtype=None, version=u'1.0.0', rpm_name=u'z4m',
                 path='/cust2/someapp/cms', n=0),
-     Deployment(app=u'z4mmonitor', version=u'1.1.0', rpm_name=u'z4mmonitor',
+     Deployment(app=u'z4mmonitor', subtype=None, version=u'1.1.0',
+                rpm_name=u'z4mmonitor',
                 path='/cust/someapp/monitor', n=0)]
 
 This is compared with the installed applications on its host:
@@ -1694,6 +1695,58 @@ of zero, so we need to check after the install that it really happened.
     SystemError: Failed to install varnish-666 (installed: None)
     CRITICAL FAILED deploying version 33
 
+
+Sub-tyoes (alternate recipes)
+-----------------------------
+
+You can specify subtypes::
+
+  /cust
+    /someapp
+      /cache : varnish special
+        version = '1'
+        /deploy
+          /cache
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+This causes a -r option to be passed to the zookeeper-deeploy script.
+
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 34
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install varnish-1
+    yum -y install varnish-1
+    INFO yum -q list installed varnish
+    yum -q list installed varnish
+    INFO /opt/varnish/bin/zookeeper-deploy -r special /cust/someapp/cache 0
+    varnish/bin/zookeeper-deploy -r special /cust/someapp/cache 0
+    INFO yum -y remove squid
+    yum -y remove squid
+    WARNING No zimagent. I hope you're screwing around. :)
+    INFO Done deploying version 34
+
+Let's make sure uninstalling works too::
+
+  /cust
+    /someapp
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    INFO ============================================================
+    INFO Deploying version 35
+    INFO /opt/varnish/bin/zookeeper-deploy -u /cust/someapp/cache 0
+    varnish/bin/zookeeper-deploy -u /cust/someapp/cache 0
+    INFO yum -y remove varnish
+    yum -y remove varnish
+    WARNING No zimagent. I hope you're screwing around. :)
+    INFO Done deploying version 35
 
 .. tear down
 

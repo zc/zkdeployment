@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 # The rpm name is also the name of the directory in /opt
 Deployment = collections.namedtuple('Deployment',
-    ['app', 'version', 'rpm_name', 'path', 'n'])
+    ['app', 'subtype', 'version', 'rpm_name', 'path', 'n'])
 UnversionedDeployment = collections.namedtuple('UnversionedDeployment',
     ['app', 'rpm_name', 'path', 'n'])
 
@@ -167,7 +167,15 @@ class Agent(object):
                     )
             seen.add(path)
             properties = self.zk.properties(path)
-            app = properties['type'].split()[0]
+            app = properties['type'].split()
+            if len(app) == 1:
+                [app] = app
+                subtype = None
+            elif len(app) == 2:
+                app, subtype = app
+            else:
+                raise ValueError("Invalud node type: %r" % properties['type'])
+
             rpm_name = app
             try:
                 version = properties['version']
@@ -182,7 +190,7 @@ class Agent(object):
                         version = DONT_CARE
 
             for i in range(n):
-                yield Deployment(app, version, rpm_name, path, i)
+                yield Deployment(app, subtype, version, rpm_name, path, i)
 
     def get_installed_deployments(self):
         for rpm_name in os.listdir(os.path.join(self.root, 'opt')):
@@ -296,9 +304,11 @@ class Agent(object):
             os.mkdir(self._path('etc', app_name))
         script = self._path(
             'opt', deployment.rpm_name, 'bin', 'zookeeper-deploy')
+        command = [script, deployment.path, str(deployment.n)]
+        if deployment.subtype:
+            command[1:1] = ['-r', deployment.subtype]
         zc.zkdeployment.run_command(
-            [script, deployment.path, str(deployment.n)],
-            verbose=self.verbose, return_output=False)
+            command, verbose=self.verbose, return_output=False)
         with open(
             self._path('etc', app_name,
                        path2name(deployment.path, deployment.n, 'script')
@@ -314,7 +324,7 @@ class Agent(object):
             logger.info('=' * 60)
             logger.info('Deploying version ' + str(self.cluster_version))
 
-            deployments = set(self.get_deployments())
+            deployments = list(self.get_deployments())
 
             logger.info("DEBUG: got deployments")
 

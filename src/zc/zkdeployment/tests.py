@@ -159,6 +159,9 @@ def subprocess_popen(args, stdout=None, stderr=None):
             if zc.zkdeployment.agent.versioned_app(app):
                 app = zc.zkdeployment.agent.versioned_app(app).group(1)
 
+            if args[0] == '-r':
+                args = args[2:]
+
             deployed = os.path.join(
                 'etc', app,
                 args[0][1:].replace('/', ',')+'.'+args[1]+'.deployed')
@@ -171,6 +174,7 @@ def subprocess_popen(args, stdout=None, stderr=None):
                     open(deployed, 'w').close()
                 except Exception:
                     print "Couldn't create %r" % deployed
+
         elif command == 'yum':
             package = args[-1]
             command = args[0]
