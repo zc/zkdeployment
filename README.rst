@@ -523,6 +523,13 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.7.0 (2012-10-05)
+------------------
+
+- Added sub-type support.
+
+- Use up-to-date zookeeper libraries.
+
 0.6.0 (2012-10-04)
 ------------------
 
