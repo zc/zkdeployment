@@ -44,7 +44,6 @@ setup(
         'setuptools',
         'simplejson',
         'zc.thread',
-        'zc.time',
         'zim.messaging',
         'zktools',
         ],

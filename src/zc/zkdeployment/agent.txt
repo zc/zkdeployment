@@ -1341,13 +1341,12 @@ If the host is out of sync with the cluster, we'll get a warning.
 If we go longer than 15 minutes and the host is still not in sync with the
 cluster, we'll start sending critical events.
 
-    >>> import datetime
+    >>> import time
     >>> with mock.patch.object(
     ...         zc.zkdeployment.agent.Agent, 'version') as mocked_version:
     ...     mocked_version.__get__ = mock.Mock(return_value=1)
     ...     monitor = zc.zkdeployment.agent.Monitor(agent)
-    ...     monitor.last_state_change = (zc.time.now() -
-    ...         datetime.timedelta(days=1))
+    ...     monitor.last_state_change = time.time() - 86400
     ...     monitor.send_state()
     /zkdeploy/agent
     CRITICAL
@@ -1358,8 +1357,7 @@ we won't get an error.
 
     >>> monitor.agent.version == monitor.agent.cluster_version
     True
-    >>> monitor.last_state_change = (zc.time.now() -
-    ...     datetime.timedelta(days=1))
+    >>> monitor.last_state_change = time.time() - 86400
     >>> monitor.send_state()
     /zkdeploy/agent
     INFO

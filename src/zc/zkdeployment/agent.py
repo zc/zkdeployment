@@ -1,5 +1,4 @@
 import collections
-import datetime
 import json
 import logging
 import optparse
@@ -12,7 +11,6 @@ import socket
 import sys
 import time
 import zc.thread
-import zc.time
 import zc.zk
 import zc.zkdeployment
 import zim.messaging
@@ -501,7 +499,7 @@ class Monitor(object):
         self.uri = '/zkdeploy/agent'
         self.manager_uri = '/managers/zkdeploymanager'
         self.interval = 300
-        self.last_state_change = zc.time.now()
+        self.last_state_change = time.time()
         self._state = 'INFO'
 
 
@@ -536,9 +534,8 @@ class Monitor(object):
         if self.agent.failing:
             self.state = 'CRITICAL'
             msg = 'Host exception on deploy()'
-        elif (zc.time.now() - self.last_state_change >
-                datetime.timedelta(minutes=15)
-                    and self.agent.version != self.agent.cluster_version):
+        elif (time.time() - self.last_state_change > 900
+              and self.agent.version != self.agent.cluster_version):
             self.state = 'CRITICAL'
             msg = 'Host and cluster are more than 15 minutes out of sync'
         elif self.agent.version == self.agent.cluster_version:
@@ -558,7 +555,7 @@ class Monitor(object):
     def state(self, val):
 
         if val != self._state:
-            self.last_state_change = zc.time.now()
+            self.last_state_change = time.time()
         self._state = val
 
 
