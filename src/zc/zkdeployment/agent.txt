@@ -1346,7 +1346,7 @@ cluster, we'll start sending critical events.
     ...         zc.zkdeployment.agent.Agent, 'version') as mocked_version:
     ...     mocked_version.__get__ = mock.Mock(return_value=1)
     ...     monitor = zc.zkdeployment.agent.Monitor(agent)
-    ...     monitor.last_state_change = time.time() - 86400
+    ...     monitor.last_good_time = time.time() - 86400
     ...     monitor.send_state()
     /zkdeploy/agent
     CRITICAL
@@ -1357,7 +1357,7 @@ we won't get an error.
 
     >>> monitor.agent.version == monitor.agent.cluster_version
     True
-    >>> monitor.last_state_change = time.time() - 86400
+    >>> monitor.last_good_time = time.time() - 86400
     >>> monitor.send_state()
     /zkdeploy/agent
     INFO

@@ -499,7 +499,7 @@ class Monitor(object):
         self.uri = '/zkdeploy/agent'
         self.manager_uri = '/managers/zkdeploymanager'
         self.interval = 300
-        self.last_state_change = time.time()
+        self.last_good_time = time.time()
         self._state = 'INFO'
 
 
@@ -534,7 +534,7 @@ class Monitor(object):
         if self.agent.failing:
             self.state = 'CRITICAL'
             msg = 'Host exception on deploy()'
-        elif (time.time() - self.last_state_change > 900
+        elif (time.time() - self.last_good_time > 900
               and self.agent.version != self.agent.cluster_version):
             self.state = 'CRITICAL'
             msg = 'Host and cluster are more than 15 minutes out of sync'
@@ -553,11 +553,9 @@ class Monitor(object):
 
     @state.setter
     def state(self, val):
-
-        if val != self._state:
-            self.last_state_change = time.time()
+        if val == 'INFO':
+            self.last_good_time = time.time()
         self._state = val
-
 
     def shutdown(self):
         self.agent.close()

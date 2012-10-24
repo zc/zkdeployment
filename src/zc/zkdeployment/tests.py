@@ -613,6 +613,31 @@ Then switch to another:
 
     """
 
+def monitor_last_good_time():
+    """A Monitor's last_good_time is update when it's state is set to 'INFO'.
+
+    >>> import zc.zkdeployment.agent
+    >>> with mock.patch('time.time', return_value=1):
+    ...     monitor = zc.zkdeployment.agent.Monitor(None)
+    >>> monitor.last_good_time
+    1
+
+    >>> monitor.state = 'CRITICAL'
+    >>> monitor.last_good_time
+    1
+
+    >>> monitor.state = 'WARNING'
+    >>> monitor.last_good_time
+    1
+
+    >>> with mock.patch('time.time', return_value=2):
+    ...     monitor.state = 'INFO'
+    >>> monitor.last_good_time
+    2
+
+    """
+
+
 class TestStream:
 
     def write(self, text):

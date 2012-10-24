@@ -523,6 +523,12 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.7.1 (2012-10-24)
+------------------
+
+- Fixed: Monitoring bug caused spurious alerts
+
+
 0.7.0 (2012-10-05)
 ------------------
 
