@@ -32,18 +32,10 @@ First, we'll need to do some setup.
     ... Last Changed Rev: VERSION
     ... Last Changed Date: 2012-04-27 18:12:10 -0400 (Fri, 27 Apr 2012)"""
 
-Now let's set up the tree::
-
-  /hosts
-    version = 123
-
-.. -> tree
-
-And import it:
+    >>> zk.import_tree('/extra_thing_that_should_be_ignored')
 
     >>> import zc.zkdeployment.sync
     >>> import mock
-    >>> zk.import_tree(tree, trim=True)
     >>> svn_cmd_patcher = mock.patch('zc.zkdeployment.sync.svn_cmd')
 
     >>> def assert_(cond, *args):
@@ -74,20 +66,12 @@ And import it:
     >>> svn_cmd_mock = svn_cmd_patcher.start()
     >>> svn_cmd_mock.side_effect = fake_svn
 
-If it doesn't detect a difference, nothing will be done.
+If there isn't a /hosts node, it will create one and sync the tree:
 
-    >>> svn_info = svn_info.replace('VERSION', '123')
-    >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
-    INFO VCS Version: 123
-    INFO ZK Version: 123
-
-If it does detect a difference, it will attempt to resolve it by importing the
-tree under version control.
-
-    >>> svn_info = svn_info.replace('123', '124')
+    >>> svn_info = svn_info.replace('VERSION', '124')
     >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
     INFO VCS Version: 124
-    INFO ZK Version: 123
+    INFO ZK Version: None
     INFO Version mismatch detected, resyncing
     INFO Importing foo.zk
     INFO Importing bar.zk
@@ -102,26 +86,19 @@ And the tree is updated:
     /bar
       /bar
       /ham
-    /cust
-      /someapp
-        /cms : z4m
-          version = u'1.0.0'
-          /deploy
-            /424242424242
-        /monitor : z4mmonitor
-          version = u'1.1.0'
-          /deploy
-            /424242424242
-    /cust2
-      /someapp
-        /cms : z4m
-          version = u'1.0.0'
-          /deploy
-            /424242424242
+    /extra_thing_that_should_be_ignored
     /foo
       /bar
     /hosts
       version = 124
+
+When it runs again, and there isn't a change, then it won't do
+anything:
+
+    >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
+    INFO VCS Version: 124
+    INFO ZK Version: 124
+
 
 Let's delete something from one of the trees, and make sure it
 disappears:
@@ -145,22 +122,7 @@ And the tree is updated:
         string_value = 'lock'
     /bar
       /bar
-    /cust
-      /someapp
-        /cms : z4m
-          version = u'1.0.0'
-          /deploy
-            /424242424242
-        /monitor : z4mmonitor
-          version = u'1.1.0'
-          /deploy
-            /424242424242
-    /cust2
-      /someapp
-        /cms : z4m
-          version = u'1.0.0'
-          /deploy
-            /424242424242
+    /extra_thing_that_should_be_ignored
     /foo
       /bar
     /hosts

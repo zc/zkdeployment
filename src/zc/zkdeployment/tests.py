@@ -643,7 +643,7 @@ class TestStream:
     def write(self, text):
         sys.stdout.write(text)
 
-def setUp(test):
+def setUp(test, initial_tree=initial_tree):
     zope.testing.setupstack.setUpDirectory(test)
     zc.zk.testing.setUp(test, initial_tree, connection_string='zookeeper:2181')
     os.mkdir('TEST_ROOT')
@@ -675,6 +675,9 @@ def setUp(test):
         logger.removeHandler(handler), logger.setLevel(logging.NOTSET)
         )
 
+def setup_sync(test):
+    setUp(test, initial_tree=' ')
+
 def test_suite():
     suite = unittest.TestSuite()
     checker = zope.testing.renormalizing.RENormalizing([
@@ -688,8 +691,19 @@ def test_suite():
                 optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE
                 ) +
             manuel.capture.Manuel(),
-            'sync.txt', 'agent.txt',
+            'agent.txt',
             setUp=setUp,
+            tearDown=zope.testing.setupstack.tearDown,
+            ))
+    suite.addTest(
+        manuel.testing.TestSuite(
+            manuel.doctest.Manuel(
+                checker=checker,
+                optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE
+                ) +
+            manuel.capture.Manuel(),
+            'sync.txt',
+            setUp=setup_sync,
             tearDown=zope.testing.setupstack.tearDown,
             ))
     suite.addTest(

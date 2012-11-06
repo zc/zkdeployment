@@ -26,9 +26,11 @@ def get_svn_version(body):
 
 
 def get_zk_version(zk):
-    return zk.get_properties(
-        '/hosts')['version']
-
+    try:
+        return zk.get_properties('/hosts')['version']
+    except zookeeper.NoNodeException:
+        zk.import_tree('/hosts\n  version=None')
+        return None
 
 def sync_with_canonical(url, dry_run=False, force=False):
     zk = zc.zk.ZK(ZK_LOCATION)
