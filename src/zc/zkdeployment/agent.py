@@ -24,6 +24,12 @@ parser.add_option(
 parser.add_option(
     '--run-once', '-1', dest='run_once', action='store_true',
     default=False, help='Run one deployment, and then exit')
+parser.add_option(
+    '--assert-zookeeper-address', '-z',
+    help=
+    "Assert that the name 'zookeeper' resolves to the given address.\n"
+    "This is useful when staging to make sure you don't accidentally connect\n"
+    "to a production ZooKeeper server.")
 
 # Hack, zktools.locking calls zookeeper.set_log_stream, which messes up zk.
 zookeeper.set_log_stream = lambda f: None
@@ -571,6 +577,14 @@ def main(args=None):
 
     options, args = parser.parse_args(args)
     assert not args
+
+    if (options.assert_zookeeper_address and
+        socket.gethostbyname('zookeeper') != options.assert_zookeeper_address
+        ):
+        raise AssertionError("Invalid zookeeper address",
+                             socket.gethostbyname('zookeeper'),
+                             options.assert_zookeeper_address)
+
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s %(name)s %(levelname)s %(message)s'

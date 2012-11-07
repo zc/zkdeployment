@@ -529,6 +529,14 @@ Changes
 - The /hosts node is now created if it doesn't exist. This is
   important for setting up new clusters.
 
+- sync now recognizes .zkx files, which are imported, without
+  trimming, after .zk files are imported.
+
+- The agent script now accepts an option, --assert-zookeeper-address
+  (-z) to assert the address expected of 'zookeeper'.  This is useful
+  when staging to make sure zkdeployment on a stage machine doesn't
+  talk to a production ZooKeeper server.
+
 0.7.1 (2012-10-24)
 ------------------
 

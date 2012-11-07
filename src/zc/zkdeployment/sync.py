@@ -53,17 +53,19 @@ def sync_with_canonical(url, dry_run=False, force=False):
             if cluster_lock.acquire(0):
                 logger.info("Version mismatch detected, resyncing")
 
-                file_list = [fi for fi in svn_cmd('ls', url).strip().split('\n')
-                             if fi.endswith('.zk')]
+                allfiles = [fi for fi in svn_cmd('ls', url).strip().split('\n')]
+                zkfiles = [fi for fi in allfiles if fi.endswith('.zk')]
+                zkxfiles = [fi for fi in allfiles if fi.endswith('.zkx')]
+
                 # Import changes
-                for fi in file_list:
+                for fi in zkfiles + zkxfiles:
                     output = ' '.join(('Importing', fi))
                     contents = svn_cmd('cat', '%s/%s' % (url,  fi))
                     if dry_run:
                         output += ' (dry run, no action taken)'
                     logger.info(output)
                     if not dry_run:
-                        zk.import_tree(contents, trim=True)
+                        zk.import_tree(contents, trim=fi.endswith('.zk'))
                 # bump version number
                 if not dry_run:
                     zk.properties('/hosts').update(version=svn_version)

@@ -5,7 +5,7 @@ Zookeeper Sync
     >>> setup_logging()
 
 sync_with_canonical
--------------------
+===================
 
 sync_with_canonical does the full dance to update a cluster's zookeeper
 tree.
@@ -49,6 +49,7 @@ First, we'll need to do some setup.
     >>> foo_zk = '/foo\n  /bar'
     >>> bar_zk = '/bar\n  /bar\n  /ham'
     >>> baz_zk = '/baz\n  /bar'
+    >>> svn_files = ['foo.zk', 'bar.zk', 'baz.txt']
 
     >>> def fake_svn(*args):
     ...     command, url = args
@@ -57,11 +58,10 @@ First, we'll need to do some setup.
     ...         return svn_info
     ...     if command == 'ls':
     ...         check_url(url)
-    ...         return '\n'.join(['foo.zk', 'bar.zk', 'baz.txt'])+'\n'
+    ...         return '\n'.join(svn_files)+'\n'
     ...     if command == 'cat':
     ...         url, name = url.rsplit('/', 1)
     ...         check_url(url)
-    ...         assert_(name.endswith('.zk'), name)
     ...         return globals()[name.replace('.', '_')]
     >>> svn_cmd_mock = svn_cmd_patcher.start()
     >>> svn_cmd_mock.side_effect = fake_svn
@@ -234,11 +234,64 @@ import.
     INFO Importing foo.zk
     INFO Importing bar.zk
 
+::
+
+   /hosts
+     version = 127
+     /1.2.3.4
+       version = 127
+     /1.2.3.5
+       version = 127
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+Layered trees
+-------------
+
+Sometimes, you need to layer information over nodes provides by other
+files. For example, you might have a base tree that you augment for
+staging or for off-site replication.
+
+After importing files ending in .zk, it imports files enfing in .zkx.
+
+    >>> foo_zkx = '/foo\n  /beep'
+    >>> svn_files = ['foo.zkx', 'foo.zk', 'bar.zk', 'baz.txt']
+    >>> svn_info = svn_info.replace('127', '128')
+    >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
+    INFO VCS Version: 128
+    INFO ZK Version: 127
+    INFO Version mismatch detected, resyncing
+    INFO Importing foo.zk
+    INFO Importing bar.zk
+    INFO Importing foo.zkx
+
+    >>> zk.print_tree()
+    /ZktoolsLocks
+      string_value = 'zktools ZLock dir'
+      /,hosts
+        string_value = 'lock'
+    /bar
+      /bar
+    /extra_thing_that_should_be_ignored
+    /foo
+      /bar
+      /beep
+    /hosts
+      version = 128
+      /1.2.3.4
+        version = 127
+      /1.2.3.5
+        version = 127
+
+.. cleanup:
+
     >>> svn_cmd_patcher.stop()
 
 
 get_svn_version
----------------
+===============
 
 get_svn_version takes the output of an "svn info" command and returns the
 latest revision number (Last Changed Rev).
@@ -259,7 +312,7 @@ latest revision number (Last Changed Rev).
 
 
 get_zk_version
---------------
+==============
 
 get_zk_version will return the current version of the cluster, as determined
 by the zookeeper '/hosts' property.

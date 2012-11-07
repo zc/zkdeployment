@@ -637,6 +637,24 @@ def monitor_last_good_time():
 
     """
 
+def assert_zookeeper_address():
+    """
+    There's a safety belt to make sure zookeeper's address is what you
+    think it is (especially for staging).
+
+    >>> with mock.patch('socket.gethostbyname', side_effect=lambda n: n+'.42'):
+    ...     zc.zkdeployment.agent.main([
+    ...         '-z127.0.0.1'])
+    Traceback (most recent call last):
+    ...
+    AssertionError: ('Invalid zookeeper address', 'zookeeper.42', '127.0.0.1')
+
+    >>> with mock.patch('socket.gethostbyname', side_effect=lambda n: n+'.42'):
+    ...     zc.zkdeployment.agent.main([
+    ...         '-zzookeeper.42', '-1'])
+
+
+    """
 
 class TestStream:
 
