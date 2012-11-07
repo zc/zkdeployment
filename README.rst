@@ -523,7 +523,7 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
-0.8.0 (2012-11-??)
+0.8.0 (2012-11-07)
 ------------------
 
 - The /hosts node is now created if it doesn't exist. This is
