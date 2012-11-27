@@ -69,7 +69,6 @@ class Agent(object):
         self.monitor_cb = monitor_cb
         self.verbose = verbose
         self.root = os.getenv('TEST_ROOT', '/')
-        self.zk = zc.zk.ZK(ZK_LOCATION)
         with open(os.path.join(self.root, PXEMAC_LOCATION), 'r') as fi:
             self.host_identifier = fi.readline().strip()
 
@@ -80,56 +79,62 @@ class Agent(object):
             version = None
 
         host_path = '/hosts/'+self.host_identifier
-        if self.host_identifier in self.zk.get_children('/hosts'):
-            _, meta = self.zk.get(host_path)
-            if meta.get('ephemeralOwner'):
-                raise ValueError('Another agent is running')
-            version = self.zk.get_properties(
-                '/hosts/' + self.host_identifier).get(
-                'version', version)
-            self.zk.delete(host_path)
+        self.zk = zc.zk.ZK(ZK_LOCATION)
+        try:
+            if self.host_identifier in self.zk.get_children('/hosts'):
+                _, meta = self.zk.get(host_path)
+                if meta.get('ephemeralOwner'):
+                    raise ValueError('Another agent is running')
+                version = self.zk.get_properties(
+                    '/hosts/' + self.host_identifier).get(
+                    'version', version)
+                self.zk.delete(host_path)
 
-        self.zk.create(
-            host_path, '', zc.zk.OPEN_ACL_UNSAFE, zookeeper.EPHEMERAL)
+            self.zk.create(
+                host_path, '', zc.zk.OPEN_ACL_UNSAFE, zookeeper.EPHEMERAL)
 
-        self.host_name = socket.getfqdn()
+            self.host_name = socket.getfqdn()
 
-        host_properties = self.zk.properties(host_path)
-        host_properties.update(
-            name = self.host_name,
-            version = version,
-            )
+            host_properties = self.zk.properties(host_path)
+            host_properties.update(
+                name = self.host_name,
+                version = version,
+                )
 
-        if os.path.exists(self._path(ROLE_LOCATION)):
-            with open(self._path(ROLE_LOCATION)) as f:
-                self.role = f.read().strip()
-            host_properties.update(role=self.role)
-        else:
-            self.role = None
+            if os.path.exists(self._path(ROLE_LOCATION)):
+                with open(self._path(ROLE_LOCATION)) as f:
+                    self.role = f.read().strip()
+                host_properties.update(role=self.role)
+            else:
+                self.role = None
 
-        if os.environ['HOME'] != '/root':
-            logger.warning('Fixing incorrect home, %r.', os.environ['HOME'])
-            os.environ['HOME'] = '/root'
+            if os.environ.get('HOME') != '/root':
+                logger.warning('Fixing incorrect home, %r.', os.environ['HOME'])
+                os.environ['HOME'] = '/root'
 
-        logger.info('Agent starting, cluster %s, host %s',
-                    self.cluster_version, self.version)
-        self.failing = False
+            logger.info('Agent starting, cluster %s, host %s',
+                        self.cluster_version, self.version)
+            self.failing = False
 
-        if run_once:
-            self.deploy()
-            time.sleep(.1)
+            if run_once:
+                self.deploy()
+                time.sleep(.1)
+                self.close()
+            else:
+                self.hosts_properties = self.zk.properties('/hosts')
+
+                @self.hosts_properties
+                def cluster_changed(properties):
+                    zc.thread.Thread(self.deploy)
+                    # import warnings; warnings.warn('Undebug')
+                    # self.deploy()
+        except:
             self.close()
-        else:
-            self.hosts_properties = self.zk.properties('/hosts')
-
-            @self.hosts_properties
-            def cluster_changed(properties):
-                zc.thread.Thread(self.deploy)
-                # import warnings; warnings.warn('Undebug')
-                # self.deploy()
+            raise
 
     def close(self):
-        self.zk.close()
+        if self.zk.handle is not None:
+            self.zk.close()
 
     @property
     def version(self):
@@ -592,15 +597,16 @@ def main(args=None):
     ZK_LOCATION = 'zookeeper:2181'
 
     agent = Agent(verbose=options.verbose, run_once=options.run_once)
-
-    if os.path.exists(
-        os.path.join(
-            os.getenv('TEST_ROOT', '/'),'etc', 'init.d', 'zimagent')
-        ):
-        monitor = Monitor(agent)
-        if not options.run_once:
-            agent.monitor_cb = monitor.send_state
-            monitor.run()
-    else:
-        agent.run()
-
+    try:
+        if os.path.exists(
+            os.path.join(
+                os.getenv('TEST_ROOT', '/'),'etc', 'init.d', 'zimagent')
+            ):
+            monitor = Monitor(agent)
+            if not options.run_once:
+                agent.monitor_cb = monitor.send_state
+                monitor.run()
+        else:
+            agent.run()
+    finally:
+        agent.close()
