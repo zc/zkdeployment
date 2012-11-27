@@ -523,6 +523,20 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.8.1 (2012-11-27)
+------------------
+
+- Fixed: the agent failed when the HOME environment variable wasn't
+  set.
+
+- Fixed: the agent sometimes didn't shut down ZooKeeper sessions
+  cleanly, leading to spurious "agent is already running" errors on
+  restart.
+
+- RPM fixed: the service status command didn't return a non-zero exit
+  status when the service wasn't running.
+
+
 0.8.0 (2012-11-07)
 ------------------
 
