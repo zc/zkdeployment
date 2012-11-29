@@ -523,7 +523,7 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
-0.8.1 (2012-11-27)
+0.8.2 (2012-11-29)
 ------------------
 
 - Fixed: the agent failed when the HOME environment variable wasn't
@@ -536,6 +536,11 @@ Changes
 - RPM fixed: the service status command didn't return a non-zero exit
   status when the service wasn't running.
 
+
+0.8.1 (2012-11-27)
+------------------
+
+Mercural fail. Never mind.
 
 0.8.0 (2012-11-07)
 ------------------
