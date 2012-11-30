@@ -109,7 +109,8 @@ class Agent(object):
                 self.role = None
 
             if os.environ.get('HOME') != '/root':
-                logger.warning('Fixing incorrect home, %r.', os.environ['HOME'])
+                logger.warning(
+                    'Fixing incorrect home, %r.', os.environ.get('HOME'))
                 os.environ['HOME'] = '/root'
 
             logger.info('Agent starting, cluster %s, host %s',

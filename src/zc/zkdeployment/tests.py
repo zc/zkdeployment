@@ -656,6 +656,20 @@ def assert_zookeeper_address():
 
     """
 
+def no_HOME():
+    """
+    >>> old = os.environ.pop('HOME', None)
+    >>> setup_logging()
+    >>> agent = zc.zkdeployment.agent.Agent()
+    WARNING Fixing incorrect home, None.
+    INFO Agent starting, cluster 1, host 1
+
+    >>> if old is not None:
+    ...     os.environ['HOME'] = old
+
+    >>> agent.close()
+    """
+
 class TestStream:
 
     def write(self, text):

@@ -523,6 +523,12 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.8.3 (2012-11-30)
+------------------
+
+- Fixed more: the agent failed when the HOME environment variable wasn't
+  set.
+
 0.8.2 (2012-11-29)
 ------------------
 
