@@ -523,7 +523,7 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
-0.9.0 (2012-12-14)
+0.9.9 (2012-12-14)
 ------------------
 
 - If there is a deployment failure, deployment is halted cluster wide.
