@@ -523,6 +523,13 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.9.0 (2012-12-14)
+------------------
+
+- If there is a deployment failure, deployment is halted cluster wide.
+
+  (This is indicated by setting the cluster version to None.)
+
 0.8.3 (2012-11-30)
 ------------------
 
