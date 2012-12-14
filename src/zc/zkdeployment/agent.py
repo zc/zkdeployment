@@ -3,6 +3,7 @@ import json
 import logging
 import optparse
 import os
+import Queue
 import re
 import shutil
 import signal
@@ -90,6 +91,8 @@ class Agent(object):
                     'version', version)
                 self.zk.delete(host_path)
 
+            self.version = version
+
             self.zk.create(
                 host_path, '', zc.zk.OPEN_ACL_UNSAFE, zookeeper.EPHEMERAL)
 
@@ -113,6 +116,9 @@ class Agent(object):
                     'Fixing incorrect home, %r.', os.environ.get('HOME'))
                 os.environ['HOME'] = '/root'
 
+            self.hosts_properties = self.zk.properties('/hosts')
+            self.cluster_version = self.hosts_properties.get('version')
+
             logger.info('Agent starting, cluster %s, host %s',
                         self.cluster_version, self.version)
             self.failing = False
@@ -122,30 +128,33 @@ class Agent(object):
                 time.sleep(.1)
                 self.close()
             else:
-                self.hosts_properties = self.zk.properties('/hosts')
+                self.queue = queue = Queue.Queue()
+
+                @zc.thread.Thread
+                def deploy_thread():
+                    while queue.get():
+                        self.deploy()
+
+                self.deploy_thread = deploy_thread
 
                 @self.hosts_properties
                 def cluster_changed(properties):
-                    zc.thread.Thread(self.deploy)
+                    self.cluster_version = properties.get('version')
+                    if self.cluster_version is not None:
+                        queue.put(True)
                     # import warnings; warnings.warn('Undebug')
                     # self.deploy()
+
         except:
             self.close()
             raise
 
     def close(self):
+        if hasattr(self, 'deploy_thread'):
+            self.queue.put(False)
+            self.deploy_thread.join(33)
         if self.zk.handle is not None:
             self.zk.close()
-
-    @property
-    def version(self):
-        return self.zk.get_properties(
-            '/hosts/' + self.host_identifier)['version']
-
-    @property
-    def cluster_version(self):
-        return self.zk.get_properties(
-            '/hosts')['version']
 
     def get_deployments(self):
         seen = set()
@@ -328,9 +337,12 @@ class Agent(object):
 
     def deploy(self):
         try:
-            if self.cluster_version == self.version:
-                # Nothing's changed
-                return
+            cluster_version = self.cluster_version
+            if cluster_version is None:
+                logger.warning('Not deploying because cluster version is None')
+                return # all stop
+            if cluster_version == self.version:
+                return # Nothing's changed
             logger.info('=' * 60)
             logger.info('Deploying version ' + str(self.cluster_version))
 
@@ -377,6 +389,8 @@ class Agent(object):
             # Remove installed deployments that aren't in zk
             installed_apps = set()
             for deployment in sorted(self.get_installed_deployments()):
+                if self.cluster_version is None:
+                    raise Abandon
                 installed_apps.add(deployment.app)
                 if ((deployment.app, deployment.path, deployment.n)
                     not in to_deploy):
@@ -388,6 +402,8 @@ class Agent(object):
             # update app software, if necessary
             clean = False
             for rpm_package_name, version in sorted(deploy_versions.items()):
+                if self.cluster_version is None:
+                    raise Abandon
                 rpm_version = self.get_rpm_version(rpm_package_name)
                 if rpm_version != version:
                     # Note that we always get here for svn installs,
@@ -449,9 +465,22 @@ class Agent(object):
                 with zktools.locking.ZkLock(
                     self.zk, path2name(deployment.path)
                     ):
-                    # The reason for the lock here is to prevent more than one
-                    # deployment for an app at a time cluster wide.
-                    self.install_deployment(deployment)
+                    # The reason for the lock here is to prevent
+                    # more than one deployment for an app at a
+                    # time cluster wide.
+                    if self.cluster_version is None:
+                        raise Abandon
+
+                    try:
+                        self.install_deployment(deployment)
+                    except:
+                        # We errored deploying.  We don't want the
+                        # error to propigate to other nodes, so we set
+                        # the cluster version to None.  We do this
+                        # before releasng the lock, and we do it later
+                        # as well to handle other failures.
+                        self.hosts_properties.update(version=None)
+                        raise
 
             # Uninstall software we don't have any more:
             for rpm_name in sorted(
@@ -476,21 +505,25 @@ class Agent(object):
             else:
                 logger.warning("No zimagent. I hope you're screwing around. :)")
 
+            self.version = self.cluster_version
             self.zk.properties('/hosts/' + self.host_identifier).update(
                 version=self.cluster_version)
             with open(os.path.join(self.root, VERSION_LOCATION), 'w') as fi:
                 fi.write(json.dumps(self.cluster_version))
 
+        except Abandon:
+            logger.warning('Abandoning deployment because cluster version '
+                           'is None')
         except:
+            self.hosts_properties.update(version=None)
             logger.exception('deploying')
-            logger.critical('FAILED deploying version %s' %
-                            self.cluster_version)
+            logger.critical('FAILED deploying version %s', cluster_version)
             self.failing = True
 
             if self.monitor_cb:
                 self.monitor_cb()
         else:
-            logger.info('Done deploying version ' + str(self.cluster_version))
+            logger.info('Done deploying version %s', + cluster_version)
             self.failing = False
 
     def run(self):
@@ -499,6 +532,9 @@ class Agent(object):
             sys.exit(0)
         signal.signal(signal.SIGTERM, handle_signal)
         signallableblock()
+
+class Abandon(Exception):
+    "A deployment is abandoned due to a cluster deployment error"
 
 def signallableblock():
     while 1:

@@ -670,6 +670,93 @@ def no_HOME():
     >>> agent.close()
     """
 
+def agent_refuse_to_update_to_None():
+    r"""
+
+    The agent won't try to deploy if the cluster version is None
+
+    >>> setup_logging()
+    >>> import zc.zk
+    >>> zk = zc.zk.ZK('zookeeper:2181')
+    >>> zk.import_tree('''
+    ... /hosts
+    ... ''')
+
+    >>> import zc.zkdeployment.agent
+    >>> agent = zc.zkdeployment.agent.Agent()
+    INFO Agent starting, cluster None, host 1
+
+    >>> zk.import_tree('''
+    ... /hosts
+    ...     version = None
+    ... ''')
+    extra path not trimmed: /hosts/424242424242
+
+    >>> agent.close()
+    >>> agent = zc.zkdeployment.agent.Agent()
+    INFO Agent starting, cluster None, host 1
+    """
+
+def agent_bails_on_None():
+    r"""
+
+    If an agent becomes unblocked by lock releasing and fins the
+    cluster version to be None, it will abandon the update.
+
+    >>> setup_logging()
+    >>> import zc.zk
+    >>> zk = zc.zk.ZK('zookeeper:2181')
+    >>> zk.import_tree('''
+    ... /cust
+    ... /cust2
+    ... /hosts
+    ...    version = 1
+    ... ''', trim=True)
+    >>> agent = zc.zkdeployment.agent.Agent()
+    INFO Agent starting, cluster 1, host 1
+
+    >>> import zktools.locking
+    >>> lock = zktools.locking.ZkLock(zk, 'app')
+    >>> lock.acquire()
+    True
+    >>> zk.import_tree('''
+    ... /app : foo
+    ...     version = '1'
+    ...     /deploy
+    ...       /424242424242
+    ... ''')
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=2); time.sleep(.1)
+    ...     # doctest: +ELLIPSIS
+    INFO ============================================================
+    INFO Deploying version 2
+    ...
+    yum -q list installed foo
+    >>> zk.properties('/hosts').update(version=None)
+    >>> _ = lock.release(); time.sleep(.1)
+    WARNING Abandoning deployment because cluster version is None
+
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=2); time.sleep(.1)
+    INFO ============================================================
+    INFO Deploying version 2
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO yum -q list installed foo
+    yum -q list installed foo
+    INFO /tmp/tmphOApCN/TEST_ROOT/opt/foo/bin/zookeeper-deploy /app 0
+    foo/bin/zookeeper-deploy /app 0
+    INFO yum -y remove z4m
+    yum -y remove z4m
+    INFO yum -y remove z4mmonitor
+    yum -y remove z4mmonitor
+    INFO /etc/init.d/zimagent restart
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 2
+
+    """
+
 class TestStream:
 
     def write(self, text):

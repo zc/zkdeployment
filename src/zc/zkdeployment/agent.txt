@@ -893,7 +893,7 @@ Let's switch back to an active agent:
 Error handling
 --------------
 
-When we get errors, wehn calling yum or deploy scripts, the yum or
+When we get errors, when calling yum or deploy scripts, the yum or
 script output is logged::
 
   /cust
@@ -931,6 +931,11 @@ Here, the squid version is bad:
     ...
     RuntimeError: Command failed: yum -y install squid-bad
     CRITICAL FAILED deploying version 19
+
+In addition, the cluster version is set to None, which will make other
+agents stop in their tracks to avoid propegating a problem:
+
+    >>> zk.properties('/hosts')['version']
 
 Now, we'll install a cranky app::
 
@@ -977,6 +982,10 @@ Now, we'll install a cranky app::
     RuntimeError: Command failed:
         /opt/cranky/bin/zookeeper-deploy /cust/someapp/acrank 0
     CRITICAL FAILED deploying version 20
+
+And, again, the version is set to None:
+
+    >>> zk.properties('/hosts')['version']
 
 Let's remove the cranky app::
 
@@ -1329,11 +1338,9 @@ are equal, it returns an 'ok' state.
 
 If the host is out of sync with the cluster, we'll get a warning.
 
-    >>> with mock.patch.object(
-    ...         zc.zkdeployment.agent.Agent, 'version') as mocked_version:
-    ...     mocked_version.__get__ = mock.Mock(return_value=1)
-    ...     monitor = zc.zkdeployment.agent.Monitor(agent)
-    ...     monitor.send_state()
+    >>> agent.version = 1
+    >>> monitor = zc.zkdeployment.agent.Monitor(agent)
+    >>> monitor.send_state()
     /zkdeploy/agent
     WARNING
     Host and cluster are out of sync (host: 1, cluster: 27)
@@ -1342,12 +1349,9 @@ If we go longer than 15 minutes and the host is still not in sync with the
 cluster, we'll start sending critical events.
 
     >>> import time
-    >>> with mock.patch.object(
-    ...         zc.zkdeployment.agent.Agent, 'version') as mocked_version:
-    ...     mocked_version.__get__ = mock.Mock(return_value=1)
-    ...     monitor = zc.zkdeployment.agent.Monitor(agent)
-    ...     monitor.last_good_time = time.time() - 86400
-    ...     monitor.send_state()
+    >>> monitor = zc.zkdeployment.agent.Monitor(agent)
+    >>> monitor.last_good_time = time.time() - 86400
+    >>> monitor.send_state()
     /zkdeploy/agent
     CRITICAL
     Host and cluster are more than 15 minutes out of sync
@@ -1355,8 +1359,7 @@ cluster, we'll start sending critical events.
 If on the other hand, the host has been ok for more than 15 minutes,
 we won't get an error.
 
-    >>> monitor.agent.version == monitor.agent.cluster_version
-    True
+    >>> monitor.agent.version = monitor.agent.cluster_version
     >>> monitor.last_good_time = time.time() - 86400
     >>> monitor.send_state()
     /zkdeploy/agent
