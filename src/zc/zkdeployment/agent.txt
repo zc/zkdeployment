@@ -1662,6 +1662,10 @@ of zero, so we need to check after the install that it really happened.
     yum -y install squid-666
     INFO yum -q list installed squid
     yum -q list installed squid
+    INFO yum -y downgrade squid-666
+    yum -y downgrade squid-666
+    INFO yum -q list installed squid
+    yum -q list installed squid
     ERROR deploying
     Traceback (most recent call last):
     ...

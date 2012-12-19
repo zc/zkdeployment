@@ -182,7 +182,7 @@ def subprocess_popen(args, stdout=None, stderr=None):
                 command = args[1]
 
             print 'yum', ' '.join(args)
-            if command == 'install':
+            if command in ('install', 'downgrade'):
                 package, version = package.rsplit('-', 1)
                 if not start_with_digit(version):
                     print >> stdout, "Error: Couldn't find package %s-%s" % (
@@ -195,14 +195,25 @@ def subprocess_popen(args, stdout=None, stderr=None):
                         package, version)
                     return FakeSubprocess(returncode=0)
 
-                buildfs(
-                    dict(
-                        opt={
-                            package: dict(
-                                bin={'zookeeper-deploy': ''},
-                                version=version+'-1',
-                                )},
-                        ))
+                vpath = os.path.join('opt', package, 'version')
+                if os.path.exists(vpath):
+                    oldv = open(vpath).read()
+                else:
+                    oldv = None
+                if (oldv is None
+                    or
+                    (command == 'install' and version >= oldv)
+                    or
+                    (command == 'downgrade' and version <= oldv)
+                    ):
+                    buildfs(
+                        dict(
+                            opt={
+                                package: dict(
+                                    bin={'zookeeper-deploy': ''},
+                                    version=version+'-1',
+                                    )},
+                            ))
             elif command == 'remove':
                 if package == 'pywrite':
                     print >> stdout, "Error: No match for argument: pywrite"
@@ -755,6 +766,61 @@ def agent_bails_on_None():
     /etc/init.d/zimagent restart
     INFO Done deploying version 2
 
+    >>> agent.close()
+    >>> zk.close()
+    """
+
+def test_downgrade():
+    """
+    >>> setup_logging()
+    >>> import zc.zk
+    >>> zk = zc.zk.ZK('zookeeper:2181')
+    >>> zk.import_tree('''
+    ... /cust
+    ...   /cms : z4m
+    ...      version = u'0.9.0'
+    ...      /deploy
+    ...        /424242424242
+    ... /cust2
+    ... ''', trim=True)
+    >>> agent = zc.zkdeployment.agent.Agent()
+    INFO Agent starting, cluster 1, host 1
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=2); time.sleep(.1)
+    ...     # doctest: +ELLIPSIS
+    INFO ============================================================
+    INFO Deploying version 2
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO /opt/z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    INFO DEBUG: update software
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install z4m-0.9.0
+    yum -y install z4m-0.9.0
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO yum -y downgrade z4m-0.9.0
+    yum -y downgrade z4m-0.9.0
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO /tmp/tmpa53YeB/TEST_ROOT/opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO yum -y remove z4mmonitor
+    yum -y remove z4mmonitor
+    INFO /etc/init.d/zimagent restart
+    /etc/init.d/zimagent restart
+    INFO Done deploying version 2
+
+    >>> agent.close()
+    >>> zk.close()
     """
 
 class TestStream:

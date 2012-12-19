@@ -523,6 +523,15 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.9.10 (2012-12-??)
+-------------------
+
+- Fixed: Failed to take yum's stupidity into account.  The yum
+  install command won't install a version lower than what's
+  installed. zkdeployment now tries the downgrade command if install
+  fails and something is installed.
+
+
 0.9.9 (2012-12-14)
 ------------------
 

@@ -456,9 +456,16 @@ class Agent(object):
 
                     rpm_version = self.get_rpm_version(rpm_package_name)
                     if (rpm_version != version) and (version is not DONT_CARE):
-                        raise SystemError(
-                            "Failed to install %s (installed: %s)" %
-                            (rpm_name, rpm_version))
+                        if rpm_version:
+                            # Yum is a disaster. Try downgrade
+                            zc.zkdeployment.run_command(
+                                ['yum', '-y', 'downgrade', rpm_name],
+                                verbose=self.verbose, return_output=False)
+                            rpm_version = self.get_rpm_version(rpm_package_name)
+                        if rpm_version != version:
+                            raise SystemError(
+                                "Failed to install %s (installed: %s)" %
+                                (rpm_name, rpm_version))
 
             # Now update/install the needed deployments
             for deployment in sorted(deployments, key=lambda d: (d.path, d.n)):
