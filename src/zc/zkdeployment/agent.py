@@ -344,7 +344,7 @@ class Agent(object):
             if cluster_version == self.version:
                 return # Nothing's changed
             logger.info('=' * 60)
-            logger.info('Deploying version ' + str(self.cluster_version))
+            logger.info('Deploying version ' + str(cluster_version))
 
             deployments = list(self.get_deployments())
 
@@ -512,11 +512,11 @@ class Agent(object):
             else:
                 logger.warning("No zimagent. I hope you're screwing around. :)")
 
-            self.version = self.cluster_version
+            self.version = cluster_version
             self.zk.properties('/hosts/' + self.host_identifier).update(
-                version=self.cluster_version)
+                version=cluster_version)
             with open(os.path.join(self.root, VERSION_LOCATION), 'w') as fi:
-                fi.write(json.dumps(self.cluster_version))
+                fi.write(json.dumps(cluster_version))
 
         except Abandon:
             logger.warning('Abandoning deployment because cluster version '
