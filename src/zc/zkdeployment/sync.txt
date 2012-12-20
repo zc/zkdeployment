@@ -71,7 +71,7 @@ If there isn't a /hosts node, it will create one and sync the tree:
     >>> svn_info = svn_info.replace('VERSION', '124')
     >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
     INFO VCS Version: 124
-    INFO ZK Version: None
+    INFO ZK Version: initial
     INFO Version mismatch detected, resyncing
     INFO Importing foo.zk
     INFO Importing bar.zk
@@ -320,3 +320,14 @@ by the zookeeper '/hosts' property.
     >>> zk.properties('/hosts').update(version=42)
     >>> zc.zkdeployment.sync.get_zk_version(zk)
     42
+
+ALL STOP
+========
+
+If the hosts node has a version of None, the syncer will refuse to
+run:
+
+    >>> zk.properties('/hosts').update(version=None)
+    >>> svn_info = svn_info.replace('128', '129')
+    >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
+    CRITICAL ALL STOP, cluster version is None

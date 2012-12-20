@@ -29,14 +29,19 @@ def get_zk_version(zk):
     try:
         return zk.get_properties('/hosts')['version']
     except zookeeper.NoNodeException:
-        zk.import_tree('/hosts\n  version=None')
-        return None
+        zk.import_tree('/hosts\n  version="initial"')
+        return "initial"
 
 def sync_with_canonical(url, dry_run=False, force=False):
     zk = zc.zk.ZK(ZK_LOCATION)
+    zk_version = get_zk_version(zk)
+    if zk_version is None:
+        logger.critical("ALL STOP, cluster version is None")
+        if not force:
+            return
+
     info_body = svn_cmd('info', url)
     svn_version = get_svn_version(info_body)
-    zk_version = get_zk_version(zk)
     logger.info("VCS Version: " + str(svn_version))
     logger.info("ZK Version: " + str(zk_version))
     if zk_version != svn_version:

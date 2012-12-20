@@ -531,6 +531,8 @@ Changes
   installed. zkdeployment now tries the downgrade command if install
   fails and something is installed.
 
+- Fixed: When the ``/hosts`` version was Nobe, the syncronizer would
+  still syncronize, clearing the error condition.
 
 0.9.9 (2012-12-14)
 ------------------
