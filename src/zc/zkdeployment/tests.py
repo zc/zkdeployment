@@ -41,6 +41,27 @@ import zope.testing.renormalizing
 start_with_digit = re.compile('\d').match
 stage_build_path = re.compile('(/opt/\w+/stage-build)$').search
 
+class TestRecipe:
+
+    def __init__(self, buildout, name, options):
+        path, index = name.rsplit('.')
+        path = '/'+name.replace(',', '/')
+        zk = zc.zk.ZK('zookeeper:2181')
+        options.update(zk.properties(path))
+        if options.get('fail-in-init'):
+            raise ValueError("fail-in-init", options.get('fail-in-init'))
+        self.options = options
+
+    def install(self):
+        if options.get('fail-in-install'):
+            raise ValueError("fail-in-install", options.get('fail-in-install'))
+        return ()
+
+    def update(self):
+        if options.get('fail-in-update'):
+            raise ValueError("fail-in-update", options.get('fail-in-update'))
+        return ()
+
 def assert_(cond, mess='Assertion Failed'):
     if not cond:
         raise AssertionError(mess)

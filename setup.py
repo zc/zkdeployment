@@ -23,6 +23,8 @@ entry_points = """
 [console_scripts]
 agent = zc.zkdeployment.agent:main
 sync = zc.zkdeployment.sync:main
+[zc.buildout]
+default = zc.zkdeployment.tests:TestRecipe
 """
 
 extras_require = dict(test=[
