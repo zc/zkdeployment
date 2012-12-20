@@ -523,7 +523,7 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
-0.9.10 (2012-12-??)
+0.9.10 (2012-12-20)
 -------------------
 
 - Fixed: Failed to take yum's stupidity into account.  The yum
