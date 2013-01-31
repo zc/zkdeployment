@@ -35,9 +35,9 @@ expressing types on the same line as the node with a ':' in between
 the node name and the type.
 
 Deployable objects, typically network services, have ``deploy``
-sub-nodes with subnodes indicating the intent to deploy the component
+sub-nodes with sub-nodes indicating the intent to deploy the component
 on a host or on all hosts with a given *role* [#role]+.  The name of
-the deploy submode is a host or role indentifier.  A deploy submode
+the deploy sub-node is a host or role indentifier.  A deploy sub-node
 may also have an ``n`` property saying how many deployments/instances
 to deploy on the node.
 
