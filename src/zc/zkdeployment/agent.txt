@@ -125,9 +125,9 @@ installation script for everything that's installed:
     >>> import time
     >>> version = 1
     >>> wait = .05
-    >>> def bump_version():
+    >>> def bump_version(inc=1):
     ...     global version
-    ...     version += 1
+    ...     version += inc
     ...     hosts_properties.update(version=version)
     ...     time.sleep(wait)
     >>> bump_version()
@@ -143,8 +143,6 @@ installation script for everything that's installed:
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     INFO yum -y remove z4mmonitor
     yum -y remove z4mmonitor
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 2
 
 '424242424242' now reports itself as being on version 2 for all of its
@@ -201,8 +199,6 @@ Here, we're installing a new monitor for cust2
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 3
 
 If we remove a deployment, but there are other deployments using
@@ -243,8 +239,6 @@ RPM is not uninstalled.
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 4
 
 Multiple deployments if the same node
@@ -295,8 +289,6 @@ Now, when we update the version, the 3 deployments will be installed.
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 2
     INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 5
 
 If we reduce the number::
@@ -336,8 +328,6 @@ the extra instances will be removed:
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 6
 
 Software versions
@@ -389,8 +379,6 @@ yum will install the newer version before updating the deployment.
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 7
 
 If our zookeeper tree has conflicting versions for a given app::
@@ -480,8 +468,6 @@ Note that now we can have different instances use different versions.
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 9
 
 If we update the version of z4m again, it will install the new RPM,
@@ -533,8 +519,6 @@ The old rpm gets removed:
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     INFO yum -y remove z4m-4.0.0
     yum -y remove z4m-4.0.0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 10
 
 Host names
@@ -582,8 +566,6 @@ In the tree above, the we've replaced the host id with the host name.
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 11
 
 If we try to deploy to a host with the id 353535353535::
@@ -629,8 +611,6 @@ Our host agent will ignore the deployment::
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 12
 
 If you try to deploy the same deployment to a host identifier and
@@ -707,8 +687,6 @@ And we're good::
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     INFO /opt/z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 14
 
 Roles
@@ -824,8 +802,6 @@ The deployment goes through, and the host reconfigures itself as a cache.
     yum -y remove z4m-5.0.0
     INFO yum -y remove z4mmonitor
     yum -y remove z4mmonitor
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 16
 
 Verbose mode
@@ -848,9 +824,6 @@ output.
     INFO SUCCESS
     INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO SUCCESS
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO SUCCESS
     INFO Done deploying version 17
 
@@ -885,8 +858,6 @@ Let's switch back to an active agent:
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
     INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 18
 
 
@@ -1019,8 +990,6 @@ Everything's fixed now.
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     INFO yum -y remove cranky
     yum -y remove cranky
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 21
 
 We're done with this agent.
@@ -1095,8 +1064,6 @@ The agent updates itself to version 19.
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
     INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 19
 
     >>> agent.version
@@ -1146,8 +1113,6 @@ When the software is deployed, it will get built out correctly.
     pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
     INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 22
 
 On update, it will check out the software again, pulling in any new changes.
@@ -1169,8 +1134,6 @@ On update, it will check out the software again, pulling in any new changes.
     pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
     INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 23
 
 When the svn-deployed software is uninstalled, it will get removed::
@@ -1209,8 +1172,6 @@ Now the software will get removed:
     INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     INFO Removing svn checkout pywrite
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 24
 
 If we switch from svn to rpm, the svn directory will be removed first::
@@ -1445,8 +1406,6 @@ When we send our state, we'll get an INFO message:
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
     INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 29
 
     >>> monitor.send_state()
@@ -1541,12 +1500,12 @@ sys.exit() in our signal handler, since the run loop won't terminate otherwise:
     {"interval": 300, "uris": ["/zkdeploy/agent"]}
     sys.exit() called
 
-If there isn't a zimagent run script, you'll get a warning, but not an
-error:
 
-    >>> os.remove(os.path.join('etc', 'init.d', 'zimagent'))
+Let's restart the agent:
+
     >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(wait)
     INFO Agent starting, cluster 29, host 29
+
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 30
@@ -1556,7 +1515,6 @@ error:
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
     INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    WARNING No zimagent. I hope you're screwing around. :)
     INFO Done deploying version 30
 
 Handling missing /etc/APP directories
@@ -1580,7 +1538,6 @@ To illustrate, we'll create a bogus application in /opt:
     INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     INFO Removing svn checkout badapp
-    WARNING No zimagent. I hope you're screwing around. :)
     INFO Done deploying version 31
 
 Handling legacy zk databases:
@@ -1607,7 +1564,6 @@ emphemeral node::
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
     INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    WARNING No zimagent. I hope you're screwing around. :)
     INFO Done deploying version 1
 
     >>> zk.print_tree('/hosts')
@@ -1732,7 +1688,6 @@ This causes a -r option to be passed to the zookeeper-deeploy script.
     varnish/bin/zookeeper-deploy -r special /cust/someapp/cache 0
     INFO yum -y remove squid
     yum -y remove squid
-    WARNING No zimagent. I hope you're screwing around. :)
     INFO Done deploying version 34
 
 Let's make sure uninstalling works too::
@@ -1750,7 +1705,6 @@ Let's make sure uninstalling works too::
     varnish/bin/zookeeper-deploy -u /cust/someapp/cache 0
     INFO yum -y remove varnish
     yum -y remove varnish
-    WARNING No zimagent. I hope you're screwing around. :)
     INFO Done deploying version 35
 
 .. tear down

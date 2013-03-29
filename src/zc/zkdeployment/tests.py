@@ -397,8 +397,6 @@ def test_non_empty_etc():
     z4mmonitor/bin/zookeeper-deploy /cust/someapp/monitor 0
     INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 1
 
     Now add a garbage file to the etc dir:
@@ -426,8 +424,6 @@ def test_non_empty_etc():
     Traceback (most recent call last):
     ...
     OSError: [Errno 39] Directory not empty: /etc/z4mmonitor'
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 2
 
     >>> agent.close()
@@ -473,8 +469,6 @@ We also were cleaning up etc directories when we shouldn't have.
     yum -y remove z4m
     INFO yum -y remove z4mmonitor
     yum -y remove z4mmonitor
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 2
 
 Let's switch back for good measure (and to see if we're getting paths right:
@@ -501,8 +495,6 @@ Let's switch back for good measure (and to see if we're getting paths right:
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     INFO yum -y remove z4m-4.0.0
     yum -y remove z4m-4.0.0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 3
 
 And finally, remove, which should clean up the etc dir:
@@ -517,8 +509,6 @@ And finally, remove, which should clean up the etc dir:
     z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
     INFO yum -y remove z4m
     yum -y remove z4m
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 4
 
     >>> os.path.exists(os.path.join('etc', 'z4m'))
@@ -610,8 +600,6 @@ Set up with one url:
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     INFO yum -y remove z4mmonitor
     yum -y remove z4mmonitor
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 2
 
 Then switch to another:
@@ -639,8 +627,6 @@ Then switch to another:
     /opt/z4m/stage-build
     INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 3
 
     """
@@ -783,8 +769,6 @@ def agent_bails_on_None():
     yum -y remove z4m
     INFO yum -y remove z4mmonitor
     yum -y remove z4mmonitor
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 2
 
     >>> agent.close()
@@ -836,8 +820,6 @@ def test_downgrade():
     z4m/bin/zookeeper-deploy /cust/cms 0
     INFO yum -y remove z4mmonitor
     yum -y remove z4mmonitor
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 2
 
     >>> agent.close()

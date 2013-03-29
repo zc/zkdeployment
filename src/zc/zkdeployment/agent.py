@@ -505,13 +505,6 @@ class Agent(object):
                     except Exception:
                         logger.exception('Removing %r', '/etc/' + app_name)
 
-            if os.path.exists(self._path('etc', 'init.d', 'zimagent')):
-                zc.zkdeployment.run_command(
-                    ['/etc/init.d/zimagent', 'restart'],
-                    verbose=self.verbose, return_output=False)
-            else:
-                logger.warning("No zimagent. I hope you're screwing around. :)")
-
             self.version = cluster_version
             self.zk.properties('/hosts/' + self.host_identifier).update(
                 version=cluster_version)
