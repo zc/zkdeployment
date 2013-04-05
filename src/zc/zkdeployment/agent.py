@@ -346,7 +346,16 @@ class Agent(object):
             logger.info('=' * 60)
             logger.info('Deploying version ' + str(cluster_version))
 
-            deployments = list(self.get_deployments())
+            try:
+                # We often hang here agthering deployment info.
+                # Try setting an alarm here ti exit if we take too long.
+                # This probably won't work because we'll probably
+                # be in the bowels of C where signals have no effect,
+                # but that would at least be informative.
+                signal.alarm(99)
+                deployments = list(self.get_deployments())
+            finally:
+                signal.alarm(0)
 
             logger.info("DEBUG: got deployments")
 
