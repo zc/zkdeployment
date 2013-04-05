@@ -48,6 +48,8 @@ setup(
         'zc.thread',
         'zim.messaging',
         'zktools',
+        'zope.component',
+        'zope.interface',
         ],
     zip_safe = False,
     entry_points=entry_points,

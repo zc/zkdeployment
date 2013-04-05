@@ -1,3 +1,5 @@
+from zc.zkdeployment.interfaces import IVCS
+
 import collections
 import json
 import logging
@@ -16,6 +18,7 @@ import zc.zk
 import zc.zkdeployment
 import zim.messaging
 import zktools.locking
+import zope.component
 import zookeeper
 
 parser = optparse.OptionParser()
@@ -54,6 +57,8 @@ UnversionedDeployment = collections.namedtuple('UnversionedDeployment',
     ['app', 'rpm_name', 'path', 'n'])
 
 versioned_app = re.compile('(\S+)-\d+([.]\d+)*$').match
+
+vcs_prefix = re.compile(r"([a-zA-Z+]+):").match
 
 def path2name(path, *extensions):
     name = path[1:].replace('/', ',')
@@ -200,14 +205,11 @@ class Agent(object):
             try:
                 version = properties['version']
             except KeyError:
-                try:
-                    version = properties['svn_location']
-                except KeyError:
-                    if '-' not in app:
-                        raise ValueError("No version found for " + path)
-                    else:
-                        app = rpm_name.rsplit('-', 1)[0]
-                        version = DONT_CARE
+                if '-' not in app:
+                    raise ValueError("No version found for " + path)
+                else:
+                    app = rpm_name.rsplit('-', 1)[0]
+                    version = DONT_CARE
 
             for i in range(n):
                 yield Deployment(app, subtype, version, rpm_name, path, i)
@@ -251,37 +253,30 @@ class Agent(object):
                 self._path('opt', name, 'bin', 'zookeeper-deploy')
             ))
 
+    def is_under_vc(self, *path):
+        path = self._path(*path)
+        for _, vcs in zope.component.getUtilitiesFor(IVCS):
+            if vcs.is_under_vc(path):
+                return True
+        return False
+
     def get_rpm_version(self, rpm_name):
         if not os.path.exists(self._path('opt', rpm_name)):
             return None
-        if os.path.exists(self._path('opt', rpm_name, '.svn')):
-            # SVN checkout, doesn't have a version
-            return None
+
+        if self.is_under_vc('opt', rpm_name):
+            return None # Checkout, no rpm version
+
         try:
             output = zc.zkdeployment.run_command(
                     ('yum -q list installed '+rpm_name).split(),
                     verbose=self.verbose, return_output=True)
         except RuntimeError:
             return None
+
         for line in output.splitlines():
             if line.startswith(rpm_name):
                 return line.split()[1].split('-', 1)[0]
-
-    def get_svn_version(self, rpm_name, default=None):
-        install_dir = self._path('opt', rpm_name)
-        if not os.path.exists(install_dir):
-            return default
-        if not os.path.exists(self._path('opt', rpm_name, '.svn')):
-            # SVN checkout, doesn't have a version
-            return default
-        for line in zc.zkdeployment.run_command(
-            ['svn', 'info', install_dir],
-            verbose=self.verbose, return_output=True
-            ).split('\n'):
-            if line.startswith('URL: '):
-                return line.split()[1]
-
-        return default
 
     def _uninstall(self, rpm_name):
         if os.path.exists(self._path('opt', rpm_name)):
@@ -296,9 +291,9 @@ class Agent(object):
         self._uninstall(rpm_name)
 
     def uninstall_something(self, opt_name):
-        if os.path.exists(self._path('opt', opt_name, '.svn')):
+        if self.is_under_vc('opt', opt_name):
             # Must be a checkout
-            logger.info("Removing svn checkout " + opt_name)
+            logger.info("Removing checkout " + opt_name)
             self._uninstall(opt_name)
         else:
             self.uninstall_rpm(opt_name)
@@ -423,43 +418,50 @@ class Agent(object):
                     raise Abandon
                 rpm_version = self.get_rpm_version(rpm_package_name)
                 if rpm_version != version:
-                    # Note that we always get here for svn installs,
+                    # Note that we always get here for VCS installs,
                     # since they have no rpm version.
                     rpm_name = rpm_package_name
                     if version is DONT_CARE:
                         if rpm_version is not None:
                             continue # single-version app, is already installed
-                    elif version.startswith('svn+ssh://'):
-                        # checkout
-                        if rpm_version is not None:
-                            self.uninstall_rpm(rpm_name)
-                        elif self.get_svn_version(rpm_name, version) != version:
-                            logger.info("Removing conflicting checkout %r != %r"
-                                        % (self.get_svn_version(rpm_name),
-                                           version))
-                            self._uninstall(rpm_name)
-
-                        zc.zkdeployment.run_command(
-                            ['svn', 'co', version, self._path('opt', rpm_name)],
-                            verbose=self.verbose, return_output=False)
-
-                        logger.info("Build %s (%s)" % (rpm_name, version))
-                        here = os.getcwd()
-                        os.chdir(self._path('opt', rpm_name))
-                        try:
-                            zc.zkdeployment.run_command(
-                                [self._path('opt', rpm_name, 'stage-build')],
-                                verbose=self.verbose, return_output=False)
-                        finally:
-                            os.chdir(here)
-                        continue
                     else:
-                        rpm_name += '-' + version
+                        m = vcs_prefix(version)
+                        if m:
+                            install_dir = self._path('opt', rpm_name)
+                            vcs = zope.component.getUtility(IVCS, m.group(1))
+                            if rpm_version is not None:
+                                self.uninstall_rpm(rpm_name)
+                            else:
+                                if os.path.exists(install_dir):
+                                    if vcs.get_version(
+                                        install_dir, self.verbose) != version:
+                                        logger.info(
+                                            "Removing conflicting checkout"
+                                            " %r != %r"
+                                            % (vcs.get_version(install_dir,
+                                                               self.verbose),
+                                               version))
+                                        self._uninstall(rpm_name)
 
-                    if os.path.exists(
-                        self._path('opt', rpm_package_name, '.svn')):
-                        # We used svn before. Clean it up.
-                        logger.info("Removing svn checkout " + rpm_package_name)
+                            vcs.update(install_dir, version, self.verbose)
+
+                            logger.info("Build %s (%s)" % (rpm_name, version))
+                            here = os.getcwd()
+                            os.chdir(self._path('opt', rpm_name))
+                            try:
+                                zc.zkdeployment.run_command(
+                                    [self._path(
+                                        'opt', rpm_name, 'stage-build')],
+                                    verbose=self.verbose, return_output=False)
+                            finally:
+                                os.chdir(here)
+                            continue
+                        else:
+                            rpm_name += '-' + version
+
+                    if self.is_under_vc('opt', rpm_package_name):
+                        # We used VCS before. Clean it up.
+                        logger.info("Removing checkout " + rpm_package_name)
                         shutil.rmtree(self._path('opt', rpm_package_name))
 
                     if not clean:
@@ -631,9 +633,15 @@ class Monitor(object):
         msg= 'ANNOUNCE: unmanaging ' +  body
         zim.messaging.send_event(self.uri, self.state, msg)
 
+def register():
+    import zc.zkdeployment.svn
+    zc.zkdeployment.svn.register()
+
 def main(args=None):
     if args is None:
         args = sys.argv[1:]
+
+    register()
 
     options, args = parser.parse_args(args)
     assert not args

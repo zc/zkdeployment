@@ -1097,7 +1097,7 @@ The agent updates itself to version 19.
 Subversion
 ----------
 
-The agent can also accept an svn location instead of a version.  In this case,
+The agent can also accept an VCS url as a version.  In this case,
 it will do a subversion checkout of the location and build out the software::
 
   /cust
@@ -1107,7 +1107,7 @@ it will do a subversion checkout of the location and build out the software::
         /deploy
           /cache
       /rewriter : pywrite
-        svn_location = 'svn+ssh://svn.zope.com/repos/main/pywrite/trunk'
+        version = 'svn+ssh://svn.zope.com/repos/main/pywrite/trunk'
         /deploy
           /cache
   /cust2
@@ -1120,6 +1120,7 @@ it will do a subversion checkout of the location and build out the software::
 .. -> tree
 
     >>> zk.import_tree(tree, trim=True)
+    >>> zc.zkdeployment.agent.register()
 
 When the software is deployed, it will get built out correctly.
 
@@ -1170,7 +1171,7 @@ When the svn-deployed software is uninstalled, it will get removed::
         /deploy
           /cache
       /rewriter : pywrite
-        svn_location = 'svn+ssh://svn.zope.com/repos/main/pywrite/trunk'
+        version = 'svn+ssh://svn.zope.com/repos/main/pywrite/trunk'
         /deploy
   /cust2
     /someapp
@@ -1196,10 +1197,10 @@ Now the software will get removed:
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
     INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO Removing svn checkout pywrite
+    INFO Removing checkout pywrite
     INFO Done deploying version 24
 
-If we switch from svn to rpm, the svn directory will be removed first::
+If we switch from VCS to rpm, the VCS directory will be removed first::
 
   /cust
     /someapp
@@ -1208,7 +1209,7 @@ If we switch from svn to rpm, the svn directory will be removed first::
         /deploy
           /cache
       /rewriter : pywrite
-        svn_location = 'svn+ssh://svn.zope.com/repos/main/pywrite/trunk'
+        version = 'svn+ssh://svn.zope.com/repos/main/pywrite/trunk'
         /deploy
           /cache
   /cust2
@@ -1252,7 +1253,7 @@ If we switch from svn to rpm, the svn directory will be removed first::
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
     INFO Deploying version 26
-    INFO Removing svn checkout pywrite
+    INFO Removing checkout pywrite
     INFO yum -y clean all
     yum -y clean all
     INFO yum -y install pywrite-3.0
@@ -1267,7 +1268,7 @@ Now, remove the deployment again::
         /deploy
           /cache
       /rewriter : pywrite
-        svn_location = 'svn+ssh://svn.zope.com/repos/main/pywrite/trunk'
+        version = 'svn+ssh://svn.zope.com/repos/main/pywrite/trunk'
         /deploy
   /cust2
     /someapp
@@ -1407,7 +1408,7 @@ If the next deployment succeeds, the monitor will turn green::
         /deploy
           /cache
       /rewriter : pywrite
-        svn_location = 'svn+ssh://svn.zope.com/repos/main/pywrite/trunk'
+        version = 'svn+ssh://svn.zope.com/repos/main/pywrite/trunk'
         /deploy
   /cust2
     /someapp
@@ -1562,7 +1563,7 @@ To illustrate, we'll create a bogus application in /opt:
     squid/bin/zookeeper-deploy /cust/someapp/cache 0
     INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO Removing svn checkout badapp
+    INFO Removing checkout badapp
     INFO Done deploying version 31
 
 Handling legacy zk databases:
