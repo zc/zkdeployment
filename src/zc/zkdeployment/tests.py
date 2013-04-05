@@ -280,6 +280,17 @@ def subprocess_popen(args, stdout=None, stderr=None):
             if args[0] == 'info':
                 with open(os.path.join(args[1], 'url')) as f:
                     print >> stdout, info_template % f.read()
+
+        elif command == 'git':
+            if args[0] == 'clone' and len(args) == 3:
+                bin_path = os.path.join(args[2], 'bin')
+                git_path = os.path.join(args[2], '.git')
+                os.makedirs(bin_path)
+                os.makedirs(git_path)
+                with open(os.path.join(bin_path, 'zookeeper-deploy'),
+                          'w'):
+                    pass
+
         elif command == '/etc/init.d/zimagent':
             print command, ' '.join(args)
 
@@ -621,7 +632,6 @@ Then switch to another:
     INFO ============================================================
     INFO Deploying version 3
     INFO svn info /opt/z4m
-    INFO svn info /opt/z4m
     INFO Removing conflicting checkout 'svn+ssh://svn.zope.com/repos/main/z4m/trunk' != u'svn+ssh://svn.zope.com/repos/main/z4m/branches/x'
     INFO svn co svn+ssh://svn.zope.com/repos/main/z4m/branches/x /opt/z4m
     INFO Build z4m (svn+ssh://svn.zope.com/repos/main/z4m/branches/x)
@@ -883,7 +893,7 @@ def test_suite():
                 optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE
                 ) +
             manuel.capture.Manuel(),
-            'agent.txt',
+            'agent.txt', 'git.txt',
             setUp=setUp,
             tearDown=zope.testing.setupstack.tearDown,
             ))

@@ -433,14 +433,17 @@ class Agent(object):
                                 self.uninstall_rpm(rpm_name)
                             else:
                                 if os.path.exists(install_dir):
-                                    if vcs.get_version(
-                                        install_dir, self.verbose) != version:
+                                    if vcs.is_under_vc(install_dir):
+                                        old_version = vcs.get_version(
+                                            install_dir, self.verbose)
+                                    else:
+                                        old_version = None
+
+                                    if old_version != version:
                                         logger.info(
                                             "Removing conflicting checkout"
                                             " %r != %r"
-                                            % (vcs.get_version(install_dir,
-                                                               self.verbose),
-                                               version))
+                                            % (old_version, version))
                                         self._uninstall(rpm_name)
 
                             vcs.update(install_dir, version, self.verbose)
@@ -634,7 +637,8 @@ class Monitor(object):
         zim.messaging.send_event(self.uri, self.state, msg)
 
 def register():
-    import zc.zkdeployment.svn
+    import zc.zkdeployment.git, zc.zkdeployment.svn
+    zc.zkdeployment.git.register()
     zc.zkdeployment.svn.register()
 
 def main(args=None):
