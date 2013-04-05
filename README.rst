@@ -523,6 +523,13 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.10.0 (2013-04-05)
+-------------------
+
+- If a deployment fails, record the error in the host's
+  properties. This makes it easier to see which node in a cluster
+  failed.
+
 0.9.10 (2012-12-20)
 -------------------
 

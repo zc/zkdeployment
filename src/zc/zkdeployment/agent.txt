@@ -904,9 +904,17 @@ Here, the squid version is bad:
     CRITICAL FAILED deploying version 19
 
 In addition, the cluster version is set to None, which will make other
-agents stop in their tracks to avoid propegating a problem:
+agents stop in their tracks to avoid propegating a problem, and the
+error is recorded in the host's node:
 
-    >>> zk.properties('/hosts')['version']
+    >>> zk.print_tree("/hosts")
+    /hosts
+      version = None
+      /424242424242
+        error = u'Command failed: yum -y install squid-bad'
+        name = u'host42'
+        role = u'cache'
+        version = 18
 
 Now, we'll install a cranky app::
 
@@ -954,9 +962,16 @@ Now, we'll install a cranky app::
         /opt/cranky/bin/zookeeper-deploy /cust/someapp/acrank 0
     CRITICAL FAILED deploying version 20
 
-And, again, the version is set to None:
+And, again, the is set to None and the error is recorded:
 
-    >>> zk.properties('/hosts')['version']
+    >>> zk.print_tree("/hosts")
+    /hosts
+      version = None
+      /424242424242
+        error = u'Command failed: /opt/cranky/bin/zookeeper-deploy ...'
+        name = u'host42'
+        role = u'cache'
+        version = 18
 
 Let's remove the cranky app::
 
@@ -991,6 +1006,16 @@ Everything's fixed now.
     INFO yum -y remove cranky
     yum -y remove cranky
     INFO Done deploying version 21
+
+And the error is cleared from the host's node:
+
+    >>> zk.print_tree("/hosts")
+    /hosts
+      version = 21
+      /424242424242
+        name = u'host42'
+        role = u'cache'
+        version = 21
 
 We're done with this agent.
 

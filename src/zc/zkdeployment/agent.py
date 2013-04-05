@@ -99,7 +99,8 @@ class Agent(object):
             self.host_name = socket.getfqdn()
 
             host_properties = self.zk.properties(host_path)
-            host_properties.update(
+            self.host_properties = host_properties
+            host_properties.set(
                 name = self.host_name,
                 version = version,
                 )
@@ -341,6 +342,13 @@ class Agent(object):
             if cluster_version is None:
                 logger.warning('Not deploying because cluster version is None')
                 return # all stop
+
+            # Clear error, if necessary:
+            if 'error' in self.host_properties:
+                props = dict(self.host_properties)
+                del props['error']
+                self.host_properties.set(props)
+
             if cluster_version == self.version:
                 return # Nothing's changed
             logger.info('=' * 60)
@@ -525,6 +533,7 @@ class Agent(object):
                            'is None')
         except:
             self.hosts_properties.update(version=None)
+            self.host_properties.update(error=str(sys.exc_info()[1]))
             logger.exception('deploying')
             logger.critical('FAILED deploying version %s', cluster_version)
             self.failing = True
