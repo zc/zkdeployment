@@ -530,6 +530,9 @@ Changes
   properties. This makes it easier to see which node in a cluster
   failed.
 
+- Don't bother to restart zimagent any more. It's not necessary.
+
+
 0.9.10 (2012-12-20)
 -------------------
 
