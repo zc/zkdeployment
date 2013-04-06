@@ -1,0 +1,260 @@
+Staging with git
+----------------
+
+.. setup
+
+    >>> setup_logging()
+    >>> import mock
+    >>> import zc.zkdeployment.agent
+    >>> patcher = mock.patch('subprocess.Popen',
+    ...     **{'side_effect': zc.zkdeployment.tests.subprocess_popen})
+    >>> _ = patcher.start()
+
+    >>> import zc.zk, time
+    >>> zk = zc.zk.ZK("zookeeper:2181")
+    >>> hosts_properties = zk.properties('/hosts')
+    >>> version = 1
+    >>> wait = .05
+    >>> def bump_version(inc=1):
+    ...     global version
+    ...     version += inc
+    ...     hosts_properties.update(version=version)
+    ...     time.sleep(wait)
+
+    >>> agent = zc.zkdeployment.agent.Agent()
+    INFO Agent starting, cluster 1, host 1
+
+    >>> zk.import_tree('/cust\n/cust2', trim=True)
+    >>> bump_version(-1)
+    INFO ...
+
+You can stage applications with git.  To do so, use a version of the
+form:
+
+   git://REPO#VERSION
+
+where:
+
+REPO
+  Is a git repository name, like ``git@bitbucket.org:zc/zkdeployment``
+
+VERSION
+  Is a git version, such as ``master``, ``0.1.0`` or anything else you
+  can pass to ``git checkout``.
+
+Let's look at some examples:
+
+
+We have a tree that stages a package via git::
+
+  /cust
+    /someapp
+      /rewriter : pywrite
+        version = 'git://git@example.com:e/rewriter#stage'
+        /deploy
+          /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+    >>> zc.zkdeployment.agent.register()
+
+Now, let's deploy:
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 1
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO git clone git@example.com:e/rewriter /opt/pywrite
+    INFO git checkout stage
+    INFO Build pywrite (git://git@example.com:e/rewriter#stage)
+    INFO /opt/pywrite/stage-build
+    /opt/pywrite/stage-build
+    INFO /opt/pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
+    pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
+    INFO Done deploying version 1
+
+If we run again, we'll do an update:
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 2
+    INFO git pull origin -a
+    INFO Build pywrite (git://git@example.com:e/rewriter#stage)
+    INFO /opt/pywrite/stage-build
+    /opt/pywrite/stage-build
+    INFO /opt/pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
+    pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
+    INFO Done deploying version 2
+
+If we ask for a different version, we'll delete and then redo the
+checkout::
+
+  /cust
+    /someapp
+      /rewriter : pywrite
+        version = 'git://git@example.com:e/rewriter#master'
+        /deploy
+          /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+Update:
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 3
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO Removing conflicting checkout
+       'git://git@example.com:e/rewriter#stage' !=
+      u'git://git@example.com:e/rewriter#master'
+    INFO git clone git@example.com:e/rewriter /opt/pywrite
+    INFO git checkout master
+    INFO Build pywrite (git://git@example.com:e/rewriter#master)
+    INFO /opt/pywrite/stage-build
+    /opt/pywrite/stage-build
+    INFO /opt/pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
+    pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
+    INFO Done deploying version 3
+
+We can even switch to subversion::
+
+  /cust
+    /someapp
+      /rewriter : pywrite
+        version = 'svn+ssh://svn.example.com/repos/e/rewriter/tags/1.0'
+        /deploy
+          /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+Update:
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 4
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO Removing conflicting checkout
+       None != u'svn+ssh://svn.example.com/repos/e/rewriter/tags/1.0'
+    INFO svn co svn+ssh://svn.example.com/repos/e/rewriter/tags/1.0
+       /opt/pywrite
+    INFO Build pywrite (svn+ssh://svn.example.com/repos/e/rewriter/tags/1.0)
+    INFO /opt/pywrite/stage-build
+    /opt/pywrite/stage-build
+    INFO /opt/pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
+    pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
+    INFO Done deploying version 4
+
+And back::
+
+  /cust
+    /someapp
+      /rewriter : pywrite
+        version = 'git://git@example.com:e/rewriter#master'
+        /deploy
+          /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+Update:
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 5
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO Removing conflicting checkout
+        None != u'git://git@example.com:e/rewriter#master'
+    INFO git clone git@example.com:e/rewriter
+        /opt/pywrite
+    INFO git checkout master
+    INFO Build pywrite (git://git@example.com:e/rewriter#master)
+    INFO /opt/pywrite/stage-build
+    /opt/pywrite/stage-build
+    INFO /opt/pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
+    pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
+    INFO Done deploying version 5
+
+We can switch to an rpm::
+
+
+  /cust
+    /someapp
+      /rewriter : pywrite
+        version = '4.2'
+        /deploy
+          /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+Update:
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 6
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO Removing checkout pywrite
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install pywrite-4.2
+    yum -y install pywrite-4.2
+    INFO yum -q list installed pywrite
+    yum -q list installed pywrite
+    INFO /opt/pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
+    pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
+    INFO Done deploying version 6
+
+And back::
+
+  /cust
+    /someapp
+      /rewriter : pywrite
+        version = 'git://git@example.com:e/rewriter#master'
+        /deploy
+          /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+Update:
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 7
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO yum -q list installed pywrite
+    yum -q list installed pywrite
+    INFO yum -y remove pywrite
+    yum -y remove pywrite
+    INFO git clone git@example.com:e/rewriter /opt/pywrite
+    INFO git checkout master
+    INFO Build pywrite (git://git@example.com:e/rewriter#master)
+    INFO /opt/pywrite/stage-build
+    /opt/pywrite/stage-build
+    INFO /opt/pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
+    pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
+    INFO Done deploying version 7
+
+.. tear down
+
+    >>> patcher.stop()
