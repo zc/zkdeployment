@@ -35,6 +35,7 @@ import unittest
 import zc.zk.testing
 import zc.zkdeployment.agent
 import zim.config # XXX zim duz way too much on import. :( Do it now.
+import zope.component.testing
 import zope.testing.setupstack
 import zope.testing.renormalizing
 
@@ -279,6 +280,17 @@ def subprocess_popen(args, stdout=None, stderr=None):
             if args[0] == 'info':
                 with open(os.path.join(args[1], 'url')) as f:
                     print >> stdout, info_template % f.read()
+
+        elif command == 'git':
+            if args[0] == 'clone' and len(args) == 3:
+                bin_path = os.path.join(args[2], 'bin')
+                git_path = os.path.join(args[2], '.git')
+                os.makedirs(bin_path)
+                os.makedirs(git_path)
+                with open(os.path.join(bin_path, 'zookeeper-deploy'),
+                          'w'):
+                    pass
+
         elif command == '/etc/init.d/zimagent':
             print command, ' '.join(args)
 
@@ -397,8 +409,6 @@ def test_non_empty_etc():
     z4mmonitor/bin/zookeeper-deploy /cust/someapp/monitor 0
     INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 1
 
     Now add a garbage file to the etc dir:
@@ -426,8 +436,6 @@ def test_non_empty_etc():
     Traceback (most recent call last):
     ...
     OSError: [Errno 39] Directory not empty: /etc/z4mmonitor'
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 2
 
     >>> agent.close()
@@ -473,8 +481,6 @@ We also were cleaning up etc directories when we shouldn't have.
     yum -y remove z4m
     INFO yum -y remove z4mmonitor
     yum -y remove z4mmonitor
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 2
 
 Let's switch back for good measure (and to see if we're getting paths right:
@@ -501,8 +507,6 @@ Let's switch back for good measure (and to see if we're getting paths right:
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     INFO yum -y remove z4m-4.0.0
     yum -y remove z4m-4.0.0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 3
 
 And finally, remove, which should clean up the etc dir:
@@ -517,8 +521,6 @@ And finally, remove, which should clean up the etc dir:
     z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
     INFO yum -y remove z4m
     yum -y remove z4m
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 4
 
     >>> os.path.exists(os.path.join('etc', 'z4m'))
@@ -578,13 +580,14 @@ def switching_subversion_urls():
 Set up with one url:
 
     >>> setup_logging()
+    >>> zc.zkdeployment.agent.register()
     >>> zk = zc.zk.ZK('zookeeper:2181')
     >>> zk.delete_recursive('/cust2')
     >>> zk.import_tree('''
     ... /cust
     ...   /someapp
     ...     /cms : z4m
-    ...       svn_location = 'svn+ssh://svn.zope.com/repos/main/z4m/trunk'
+    ...       version = 'svn+ssh://svn.zope.com/repos/main/z4m/trunk'
     ...       /deploy
     ...         /424242424242
     ... ''', trim=True)
@@ -610,8 +613,6 @@ Set up with one url:
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     INFO yum -y remove z4mmonitor
     yum -y remove z4mmonitor
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 2
 
 Then switch to another:
@@ -620,7 +621,7 @@ Then switch to another:
     ... /cust
     ...   /someapp
     ...     /cms : z4m
-    ...       svn_location = 'svn+ssh://svn.zope.com/repos/main/z4m/branches/x'
+    ...       version = 'svn+ssh://svn.zope.com/repos/main/z4m/branches/x'
     ...       /deploy
     ...         /424242424242
     ... ''', trim=True)
@@ -631,7 +632,6 @@ Then switch to another:
     INFO ============================================================
     INFO Deploying version 3
     INFO svn info /opt/z4m
-    INFO svn info /opt/z4m
     INFO Removing conflicting checkout 'svn+ssh://svn.zope.com/repos/main/z4m/trunk' != u'svn+ssh://svn.zope.com/repos/main/z4m/branches/x'
     INFO svn co svn+ssh://svn.zope.com/repos/main/z4m/branches/x /opt/z4m
     INFO Build z4m (svn+ssh://svn.zope.com/repos/main/z4m/branches/x)
@@ -639,8 +639,6 @@ Then switch to another:
     /opt/z4m/stage-build
     INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 3
 
     """
@@ -783,8 +781,6 @@ def agent_bails_on_None():
     yum -y remove z4m
     INFO yum -y remove z4mmonitor
     yum -y remove z4mmonitor
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 2
 
     >>> agent.close()
@@ -836,8 +832,6 @@ def test_downgrade():
     z4m/bin/zookeeper-deploy /cust/cms 0
     INFO yum -y remove z4mmonitor
     yum -y remove z4mmonitor
-    INFO /etc/init.d/zimagent restart
-    /etc/init.d/zimagent restart
     INFO Done deploying version 2
 
     >>> agent.close()
@@ -851,6 +845,8 @@ class TestStream:
 
 def setUp(test, initial_tree=initial_tree):
     zope.testing.setupstack.setUpDirectory(test)
+    zope.component.testing.setUp()
+    zope.testing.setupstack.register(test, zope.component.testing.tearDown)
     zc.zk.testing.setUp(test, initial_tree, connection_string='zookeeper:2181')
     os.mkdir('TEST_ROOT')
     os.chdir('TEST_ROOT')
@@ -897,7 +893,7 @@ def test_suite():
                 optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE
                 ) +
             manuel.capture.Manuel(),
-            'agent.txt',
+            'agent.txt', 'git.txt',
             setUp=setUp,
             tearDown=zope.testing.setupstack.tearDown,
             ))

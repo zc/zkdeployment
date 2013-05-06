@@ -35,9 +35,9 @@ expressing types on the same line as the node with a ':' in between
 the node name and the type.
 
 Deployable objects, typically network services, have ``deploy``
-sub-nodes with subnodes indicating the intent to deploy the component
+sub-nodes with sub-nodes indicating the intent to deploy the component
 on a host or on all hosts with a given *role* [#role]+.  The name of
-the deploy submode is a host or role indentifier.  A deploy submode
+the deploy sub-node is a host or role indentifier.  A deploy sub-node
 may also have an ``n`` property saying how many deployments/instances
 to deploy on the node.
 
@@ -523,6 +523,16 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.10.0 (2013-04-05)
+-------------------
+
+- If a deployment fails, record the error in the host's
+  properties. This makes it easier to see which node in a cluster
+  failed.
+
+- Don't bother to restart zimagent any more. It's not necessary.
+
+
 0.9.10 (2012-12-20)
 -------------------
 
@@ -531,7 +541,7 @@ Changes
   installed. zkdeployment now tries the downgrade command if install
   fails and something is installed.
 
-- Fixed: When the ``/hosts`` version was Nobe, the syncronizer would
+- Fixed: When the ``/hosts`` version was None, the syncronizer would
   still syncronize, clearing the error condition.
 
 0.9.9 (2012-12-14)
