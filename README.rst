@@ -523,6 +523,15 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.11.0 (2013-05-06)
+-------------------
+
+- Generalized agent VCS (stage) support.
+
+  Git is now supported via versions of the form:
+
+  git://REPO#VERSION
+
 0.10.0 (2013-04-05)
 -------------------
 
