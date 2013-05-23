@@ -1094,8 +1094,8 @@ The agent updates itself to version 19.
     >>> agent.version
     19
 
-Subversion
-----------
+Version Control
+---------------
 
 The agent can also accept an VCS url as a version.  In this case,
 it will do a subversion checkout of the location and build out the software::
