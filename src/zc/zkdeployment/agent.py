@@ -331,6 +331,34 @@ class Agent(object):
             'w') as f:
             f.write(script)
 
+    def install_rpm(self, rpm_package_name, version):
+        if not self.clean:
+            zc.zkdeployment.run_command('yum -y clean all'.split(),
+                    verbose=self.verbose, return_output=False)
+            self.clean = True
+
+        rpm_name = rpm_package_name
+        if version is not DONT_CARE:
+            rpm_name += '-' + version
+
+        zc.zkdeployment.run_command(
+            ['yum', '-y', 'install', rpm_name],
+            verbose=self.verbose, return_output=False)
+
+        rpm_version = self.get_rpm_version(rpm_package_name)
+        if (rpm_version != version) and (version is not DONT_CARE):
+            if rpm_version:
+                # Yum is a disaster. Try downgrade
+                zc.zkdeployment.run_command(
+                    ['yum', '-y', 'downgrade', rpm_name],
+                    verbose=self.verbose, return_output=False)
+                rpm_version = self.get_rpm_version(rpm_package_name)
+            if rpm_version != version:
+                raise SystemError(
+                    "Failed to install %s (installed: %s)" %
+                    (rpm_name, rpm_version))
+
+
     def deploy(self):
         try:
             cluster_version = self.cluster_version
@@ -412,7 +440,7 @@ class Agent(object):
             logger.info("DEBUG: update software")
 
             # update app software, if necessary
-            clean = False
+            self.clean = False
             for rpm_package_name, version in sorted(deploy_versions.items()):
                 if self.cluster_version is None:
                     raise Abandon
@@ -420,17 +448,16 @@ class Agent(object):
                 if rpm_version != version:
                     # Note that we always get here for VCS installs,
                     # since they have no rpm version.
-                    rpm_name = rpm_package_name
                     if version is DONT_CARE:
                         if rpm_version is not None:
                             continue # single-version app, is already installed
                     else:
                         m = vcs_prefix(version)
                         if m:
-                            install_dir = self._path('opt', rpm_name)
+                            install_dir = self._path('opt', rpm_package_name)
                             vcs = zope.component.getUtility(IVCS, m.group(1))
                             if rpm_version is not None:
-                                self.uninstall_rpm(rpm_name)
+                                self.uninstall_rpm(rpm_package_name)
                             else:
                                 if os.path.exists(install_dir):
                                     if vcs.is_under_vc(install_dir):
@@ -444,50 +471,31 @@ class Agent(object):
                                             "Removing conflicting checkout"
                                             " %r != %r"
                                             % (old_version, version))
-                                        self._uninstall(rpm_name)
+                                        self._uninstall(rpm_package_name)
 
                             vcs.update(install_dir, version, self.verbose)
 
-                            logger.info("Build %s (%s)" % (rpm_name, version))
+                            logger.info("Build %s (%s)" %
+                                        (rpm_package_name, version))
                             here = os.getcwd()
-                            os.chdir(self._path('opt', rpm_name))
+                            os.chdir(self._path('opt', rpm_package_name))
                             try:
                                 zc.zkdeployment.run_command(
                                     [self._path(
-                                        'opt', rpm_name, 'stage-build')],
+                                        'opt',
+                                        rpm_package_name,
+                                        'stage-build')],
                                     verbose=self.verbose, return_output=False)
                             finally:
                                 os.chdir(here)
                             continue
-                        else:
-                            rpm_name += '-' + version
 
                     if self.is_under_vc('opt', rpm_package_name):
                         # We used VCS before. Clean it up.
                         logger.info("Removing checkout " + rpm_package_name)
                         shutil.rmtree(self._path('opt', rpm_package_name))
 
-                    if not clean:
-                        zc.zkdeployment.run_command('yum -y clean all'.split(),
-                                verbose=self.verbose, return_output=False)
-                        clean = True
-
-                    zc.zkdeployment.run_command(
-                        ['yum', '-y', 'install', rpm_name],
-                        verbose=self.verbose, return_output=False)
-
-                    rpm_version = self.get_rpm_version(rpm_package_name)
-                    if (rpm_version != version) and (version is not DONT_CARE):
-                        if rpm_version:
-                            # Yum is a disaster. Try downgrade
-                            zc.zkdeployment.run_command(
-                                ['yum', '-y', 'downgrade', rpm_name],
-                                verbose=self.verbose, return_output=False)
-                            rpm_version = self.get_rpm_version(rpm_package_name)
-                        if rpm_version != version:
-                            raise SystemError(
-                                "Failed to install %s (installed: %s)" %
-                                (rpm_name, rpm_version))
+                    self.install_rpm(rpm_package_name, version)
 
             # Now update/install the needed deployments
             for deployment in sorted(deployments, key=lambda d: (d.path, d.n)):
