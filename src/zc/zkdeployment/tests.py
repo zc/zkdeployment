@@ -18,6 +18,7 @@
 __docformat__ = "reStructuredText"
 
 import doctest
+import json
 import logging
 import manuel.capture
 import manuel.doctest
@@ -153,7 +154,7 @@ class FakeSubprocess(object):
         print 'Terminating process'
 
 
-def subprocess_popen(args, stdout=None, stderr=None):
+def subprocess_popen(base, args, stdout=None, stderr=None):
     try:
         if stderr is not subprocess.STDOUT:
             raise TypeError('bad subprocess call')
@@ -185,7 +186,7 @@ def subprocess_popen(args, stdout=None, stderr=None):
                 args = args[2:]
 
             deployed = os.path.join(
-                'etc', app,
+                base, 'etc', app,
                 args[0][1:].replace('/', ',')+'.'+args[1]+'.deployed')
 
             if uninstall:
@@ -205,37 +206,47 @@ def subprocess_popen(args, stdout=None, stderr=None):
 
             print 'yum', ' '.join(args)
             if command in ('install', 'downgrade'):
-                package, version = package.rsplit('-', 1)
-                if not start_with_digit(version):
-                    print >> stdout, "Error: Couldn't find package %s-%s" % (
-                        package, version)
-                    return FakeSubprocess(returncode=1)
-                if package == 'z4m' and version >= '4.0.0':
-                    package += '-' + version
-                elif version == '666':
-                    print >> stdout, "Error: Couldn't find package %s-%s" % (
-                        package, version)
-                    return FakeSubprocess(returncode=0)
+                if '-' in package:
+                    package, version = package.rsplit('-', 1)
+                    if not start_with_digit(version):
+                        print >> stdout, (
+                            "Error: Couldn't find package %s-%s" % (
+                                package, version))
+                        return FakeSubprocess(returncode=1)
+                    if package == 'z4m' and version >= '4.0.0':
+                        package += '-' + version
+                    elif version == '666':
+                        print >> stdout, (
+                            "Error: Couldn't find package %s-%s" % (
+                                package, version))
+                        return FakeSubprocess(returncode=0)
+                else:
+                    version = None
 
-                vpath = os.path.join('opt', package, 'version')
+
+                vpath = os.path.join(base, 'opt', package, 'version')
                 if os.path.exists(vpath):
                     oldv = open(vpath).read()
                 else:
                     oldv = None
+
                 if (oldv is None
                     or
-                    (command == 'install' and version >= oldv)
-                    or
-                    (command == 'downgrade' and version <= oldv)
+                    (version is not None and (
+                        (command == 'install' and version >= oldv)
+                        or
+                        (command == 'downgrade' and version <= oldv)
+                        )
+                     )
                     ):
                     buildfs(
                         dict(
                             opt={
                                 package: dict(
                                     bin={'zookeeper-deploy': ''},
-                                    version=version+'-1',
+                                    version=(version or '1')+'-1',
                                     )},
-                            ))
+                            ), base)
             elif command == 'remove':
                 if package == 'pywrite':
                     print >> stdout, "Error: No match for argument: pywrite"
@@ -248,7 +259,7 @@ def subprocess_popen(args, stdout=None, stderr=None):
             elif command == 'list':
                 if '-q' not in args:
                     print >> stdout, 'Loaded plugins: downloadonly'
-                path = os.path.join('opt', package, 'version')
+                path = os.path.join(base, 'opt', package, 'version')
                 if os.path.exists(path):
                     print >> stdout, 'Installed Packages'
                     version = open(path).read()
@@ -275,6 +286,11 @@ def subprocess_popen(args, stdout=None, stderr=None):
                 with open(os.path.join(args[2], 'bin', 'zookeeper-deploy'),
                           'w'):
                     pass
+                with open(os.path.join(args[2], 'requires.json'), 'w') as f:
+                    f.write(json.dumps(dict(
+                        run = ["run1", dict(name="run2", version="0.1")],
+                        build = ["build1", dict(name="build2", version="2.1")],
+                        )))
                 with open(url_path, 'w') as f:
                     f.write(args[1])
             if args[0] == 'info':
@@ -394,7 +410,7 @@ def test_non_empty_etc():
     >>> zk = zc.zk.ZK('zookeeper:2181')
     >>> import zc.zkdeployment.agent
     >>> os.remove(os.path.join('etc', 'zim', 'host_version'))
-    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    >>> with mock.patch('subprocess.Popen', side_effect=Popen):
     ...     agent = zc.zkdeployment.agent.Agent(); time.sleep(.50)
     INFO Agent starting, cluster 1, host None
     INFO ============================================================
@@ -417,7 +433,7 @@ def test_non_empty_etc():
 
     >>> zk.import_tree('/cust', trim=True)
 
-    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    >>> with mock.patch('subprocess.Popen', side_effect=Popen):
     ...     zk.properties('/hosts').update(version=2); time.sleep(.50)
     ... # doctest: +ELLIPSIS
     INFO ============================================================
@@ -461,7 +477,7 @@ We also were cleaning up etc directories when we shouldn't have.
     ... ''', trim=True)
     >>> agent = zc.zkdeployment.agent.Agent()
     INFO Agent starting, cluster 1, host 1
-    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    >>> with mock.patch('subprocess.Popen', side_effect=Popen):
     ...     zk.properties('/hosts').update(version=2); time.sleep(.50)
     INFO ============================================================
     INFO Deploying version 2
@@ -493,7 +509,7 @@ Let's switch back for good measure (and to see if we're getting paths right:
     ...       /deploy
     ...         /424242424242
     ... ''', trim=True)
-    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    >>> with mock.patch('subprocess.Popen', side_effect=Popen):
     ...     zk.properties('/hosts').update(version=3); time.sleep(.50)
     INFO ============================================================
     INFO Deploying version 3
@@ -513,7 +529,7 @@ And finally, remove, which should clean up the etc dir:
 
 
     >>> zk.delete_recursive('/cust')
-    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    >>> with mock.patch('subprocess.Popen', side_effect=Popen):
     ...     zk.properties('/hosts').update(version=4); time.sleep(.50)
     INFO ============================================================
     INFO Deploying version 4
@@ -593,7 +609,7 @@ Set up with one url:
     ... ''', trim=True)
     >>> agent = zc.zkdeployment.agent.Agent()
     INFO Agent starting, cluster 1, host 1
-    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    >>> with mock.patch('subprocess.Popen', side_effect=Popen):
     ...     zk.properties('/hosts').update(version=2); time.sleep(.50)
     INFO ============================================================
     INFO Deploying version 2
@@ -626,7 +642,7 @@ Then switch to another:
     ...         /424242424242
     ... ''', trim=True)
 
-    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    >>> with mock.patch('subprocess.Popen', side_effect=Popen):
     ...     zk.properties('/hosts').update(version=3); time.sleep(.50)
     ... # doctest: +NORMALIZE_WHITESPACE
     INFO ============================================================
@@ -755,7 +771,7 @@ def agent_bails_on_None():
     ...     /deploy
     ...       /424242424242
     ... ''')
-    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    >>> with mock.patch('subprocess.Popen', side_effect=Popen):
     ...     zk.properties('/hosts').update(version=2); time.sleep(.1)
     ...     # doctest: +ELLIPSIS
     INFO ============================================================
@@ -766,7 +782,7 @@ def agent_bails_on_None():
     >>> _ = lock.release(); time.sleep(.1)
     WARNING Abandoning deployment because cluster version is None
 
-    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    >>> with mock.patch('subprocess.Popen', side_effect=Popen):
     ...     zk.properties('/hosts').update(version=2); time.sleep(.1)
     INFO ============================================================
     INFO Deploying version 2
@@ -802,7 +818,7 @@ def test_downgrade():
     ... ''', trim=True)
     >>> agent = zc.zkdeployment.agent.Agent()
     INFO Agent starting, cluster 1, host 1
-    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    >>> with mock.patch('subprocess.Popen', side_effect=Popen):
     ...     zk.properties('/hosts').update(version=2); time.sleep(.1)
     ...     # doctest: +ELLIPSIS
     INFO ============================================================
@@ -876,6 +892,9 @@ def setUp(test, initial_tree=initial_tree):
         lambda test:
         logger.removeHandler(handler), logger.setLevel(logging.NOTSET)
         )
+
+    test.globs['Popen'] = lambda *args, **kw: subprocess_popen(
+        os.environ['TEST_ROOT'], *args, **kw)
 
 def setup_sync(test):
     setUp(test, initial_tree=' ')

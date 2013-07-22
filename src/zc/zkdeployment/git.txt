@@ -6,8 +6,7 @@ Staging with git
     >>> setup_logging()
     >>> import mock
     >>> import zc.zkdeployment.agent
-    >>> patcher = mock.patch('subprocess.Popen',
-    ...     **{'side_effect': zc.zkdeployment.tests.subprocess_popen})
+    >>> patcher = mock.patch('subprocess.Popen', side_effect=Popen})
     >>> _ = patcher.start()
 
     >>> import zc.zk, time

@@ -16,8 +16,7 @@ Create an agent:
 
     >>> import mock
     >>> import zc.zkdeployment.agent
-    >>> patcher = mock.patch('subprocess.Popen',
-    ...     **{'side_effect': zc.zkdeployment.tests.subprocess_popen})
+    >>> patcher = mock.patch('subprocess.Popen', side_effect=Popen)
     >>> _ = patcher.start()
     >>> agent = zc.zkdeployment.agent.Agent()
     INFO Agent starting, cluster 1, host 1
@@ -1129,6 +1128,24 @@ When the software is deployed, it will get built out correctly.
     INFO Deploying version 22
     INFO svn co svn+ssh://svn.zope.com/repos/main/pywrite/trunk /opt/pywrite
     INFO Build pywrite (svn+ssh://svn.zope.com/repos/main/pywrite/trunk)
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install run1
+    yum -y install run1
+    INFO yum -q list installed run1
+    yum -q list installed run1
+    INFO yum -y install run2-0.1
+    yum -y install run2-0.1
+    INFO yum -q list installed run2
+    yum -q list installed run2
+    INFO yum -y install build1
+    yum -y install build1
+    INFO yum -q list installed build1
+    yum -q list installed build1
+    INFO yum -y install build2-2.1
+    yum -y install build2-2.1
+    INFO yum -q list installed build2
+    yum -q list installed build2
     INFO /opt/pywrite/stage-build
     /opt/pywrite/stage-build
     INFO yum -q list installed squid
@@ -1140,6 +1157,9 @@ When the software is deployed, it will get built out correctly.
     INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     INFO Done deploying version 22
+
+Note that a number of rpms were installed.  This is because pywrite
+had a number of build- and run-time dependencies.
 
 On update, it will check out the software again, pulling in any new changes.
 

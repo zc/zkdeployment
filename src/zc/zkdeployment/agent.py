@@ -285,6 +285,40 @@ class Agent(object):
         if versioned_app(rpm_name):
             rpm_name = versioned_app(rpm_name).group(1)
 
+    def install_rpm(self, rpm_package_name, version, maybe_exists=False):
+
+        if maybe_exists:
+            rpm_version = self.get_rpm_version(rpm_package_name)
+            if rpm_version:
+                if version and version == rpm_version:
+                    return # nothing else to do
+
+        if not self.clean:
+            zc.zkdeployment.run_command('yum -y clean all'.split(),
+                    verbose=self.verbose, return_output=False)
+            self.clean = True
+
+        rpm_name = rpm_package_name
+        if version is not DONT_CARE:
+            rpm_name += '-' + version
+
+        zc.zkdeployment.run_command(
+            ['yum', '-y', 'install', rpm_name],
+            verbose=self.verbose, return_output=False)
+
+        rpm_version = self.get_rpm_version(rpm_package_name)
+        if (rpm_version != version) and (version is not DONT_CARE):
+            if rpm_version:
+                # Yum is a disaster. Try downgrade
+                zc.zkdeployment.run_command(
+                    ['yum', '-y', 'downgrade', rpm_name],
+                    verbose=self.verbose, return_output=False)
+                rpm_version = self.get_rpm_version(rpm_package_name)
+            if rpm_version != version:
+                raise SystemError(
+                    "Failed to install %s (installed: %s)" %
+                    (rpm_name, rpm_version))
+
     def uninstall_rpm(self, rpm_name):
         zc.zkdeployment.run_command(['yum', '-y', 'remove', rpm_name],
                 verbose=self.verbose, return_output=False)
@@ -331,33 +365,25 @@ class Agent(object):
             'w') as f:
             f.write(script)
 
-    def install_rpm(self, rpm_package_name, version):
-        if not self.clean:
-            zc.zkdeployment.run_command('yum -y clean all'.split(),
-                    verbose=self.verbose, return_output=False)
-            self.clean = True
+    def install_stage_requirements(self, versions):
+        # check for and install any requirements
+        if os.path.exists("requires.json"):
+            with open("requires.json") as f:
+                requires = json.loads(f.read())
+                for kind in 'run', 'build':
+                    for r in requires.get(kind, ()):
+                        if isinstance(r, basestring):
+                            name = r
+                            version = DONT_CARE
+                        else:
+                            name = r['name']
+                            version = r.get('version', DONT_CARE)
 
-        rpm_name = rpm_package_name
-        if version is not DONT_CARE:
-            rpm_name += '-' + version
-
-        zc.zkdeployment.run_command(
-            ['yum', '-y', 'install', rpm_name],
-            verbose=self.verbose, return_output=False)
-
-        rpm_version = self.get_rpm_version(rpm_package_name)
-        if (rpm_version != version) and (version is not DONT_CARE):
-            if rpm_version:
-                # Yum is a disaster. Try downgrade
-                zc.zkdeployment.run_command(
-                    ['yum', '-y', 'downgrade', rpm_name],
-                    verbose=self.verbose, return_output=False)
-                rpm_version = self.get_rpm_version(rpm_package_name)
-            if rpm_version != version:
-                raise SystemError(
-                    "Failed to install %s (installed: %s)" %
-                    (rpm_name, rpm_version))
-
+                        if name in versions:
+                            assert (
+                                (not version) or versions[name] == version), (
+                                "Bad version of depencency %s" % name)
+                        self.install_rpm(name, version, True)
 
     def deploy(self):
         try:
@@ -479,6 +505,7 @@ class Agent(object):
                                         (rpm_package_name, version))
                             here = os.getcwd()
                             os.chdir(self._path('opt', rpm_package_name))
+                            self.install_stage_requirements(deploy_versions)
                             try:
                                 zc.zkdeployment.run_command(
                                     [self._path(
