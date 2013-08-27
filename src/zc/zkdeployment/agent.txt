@@ -241,7 +241,7 @@ RPM is not uninstalled.
     z4mmonitor/bin/zookeeper-deploy /cust2/someapp/monitor 0
     INFO Done deploying version 4
 
-Multiple deployments if the same node
+Multiple deployments of the same node
 -------------------------------------
 
 You can also specify multiple deployments of a given type by using the
