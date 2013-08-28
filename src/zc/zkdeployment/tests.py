@@ -765,6 +765,7 @@ def agent_bails_on_None():
     >>> zk.properties('/hosts').update(version=None)
     >>> _ = lock.release(); time.sleep(.1)
     WARNING Abandoning deployment because cluster version is None
+    WARNING Not deploying because cluster version is None
 
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
     ...     zk.properties('/hosts').update(version=2); time.sleep(.1)
