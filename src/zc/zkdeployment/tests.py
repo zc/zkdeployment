@@ -291,6 +291,11 @@ def subprocess_popen(args, stdout=None, stderr=None):
                           'w'):
                     pass
 
+        elif command == 'chmod':
+            if args != ['-R', 'a+rX', '.']:
+                raise ValueError("Unexpected arguments for chmod")
+            print command, ' '.join(args)
+
         elif command == '/etc/init.d/zimagent':
             print command, ' '.join(args)
 
@@ -609,6 +614,8 @@ Set up with one url:
     INFO Build z4m (svn+ssh://svn.zope.com/repos/main/z4m/trunk)
     INFO /opt/z4m/stage-build
     /opt/z4m/stage-build
+    INFO chmod -R a+rX .
+    chmod -R a+rX .
     INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     INFO yum -y remove z4mmonitor
@@ -637,6 +644,8 @@ Then switch to another:
     INFO Build z4m (svn+ssh://svn.zope.com/repos/main/z4m/branches/x)
     INFO /opt/z4m/stage-build
     /opt/z4m/stage-build
+    INFO chmod -R a+rX .
+    chmod -R a+rX .
     INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     INFO Done deploying version 3

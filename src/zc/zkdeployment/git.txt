@@ -72,6 +72,8 @@ Now, let's deploy:
     INFO Build pywrite (git://git@example.com:e/rewriter#stage)
     INFO /opt/pywrite/stage-build
     /opt/pywrite/stage-build
+    INFO chmod -R a+rX .
+    chmod -R a+rX .
     INFO /opt/pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
     pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
     INFO Done deploying version 1
@@ -85,6 +87,8 @@ If we run again, we'll do an update:
     INFO Build pywrite (git://git@example.com:e/rewriter#stage)
     INFO /opt/pywrite/stage-build
     /opt/pywrite/stage-build
+    INFO chmod -R a+rX .
+    chmod -R a+rX .
     INFO /opt/pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
     pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
     INFO Done deploying version 2
@@ -119,6 +123,8 @@ Update:
     INFO Build pywrite (git://git@example.com:e/rewriter#master)
     INFO /opt/pywrite/stage-build
     /opt/pywrite/stage-build
+    INFO chmod -R a+rX .
+    chmod -R a+rX .
     INFO /opt/pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
     pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
     INFO Done deploying version 3
@@ -151,6 +157,8 @@ Update:
     INFO Build pywrite (svn+ssh://svn.example.com/repos/e/rewriter/tags/1.0)
     INFO /opt/pywrite/stage-build
     /opt/pywrite/stage-build
+    INFO chmod -R a+rX .
+    chmod -R a+rX .
     INFO /opt/pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
     pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
     INFO Done deploying version 4
@@ -184,6 +192,8 @@ Update:
     INFO Build pywrite (git://git@example.com:e/rewriter#master)
     INFO /opt/pywrite/stage-build
     /opt/pywrite/stage-build
+    INFO chmod -R a+rX .
+    chmod -R a+rX .
     INFO /opt/pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
     pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
     INFO Done deploying version 5
@@ -251,6 +261,8 @@ Update:
     INFO Build pywrite (git://git@example.com:e/rewriter#master)
     INFO /opt/pywrite/stage-build
     /opt/pywrite/stage-build
+    INFO chmod -R a+rX .
+    chmod -R a+rX .
     INFO /opt/pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
     pywrite/bin/zookeeper-deploy /cust/someapp/rewriter 0
     INFO Done deploying version 7

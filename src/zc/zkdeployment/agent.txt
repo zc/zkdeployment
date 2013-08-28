@@ -1132,6 +1132,8 @@ When the software is deployed, it will get built out correctly.
     INFO Build pywrite (svn+ssh://svn.zope.com/repos/main/pywrite/trunk)
     INFO /opt/pywrite/stage-build
     /opt/pywrite/stage-build
+    INFO chmod -R a+rX .
+    chmod -R a+rX .
     INFO yum -q list installed squid
     yum -q list installed squid
     INFO /opt/squid/bin/zookeeper-deploy /cust/someapp/cache 0
@@ -1153,6 +1155,8 @@ On update, it will check out the software again, pulling in any new changes.
     INFO Build pywrite (svn+ssh://svn.zope.com/repos/main/pywrite/trunk)
     INFO /opt/pywrite/stage-build
     /opt/pywrite/stage-build
+    INFO chmod -R a+rX .
+    chmod -R a+rX .
     INFO yum -q list installed squid
     yum -q list installed squid
     INFO /opt/squid/bin/zookeeper-deploy /cust/someapp/cache 0
