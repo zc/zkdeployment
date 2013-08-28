@@ -523,7 +523,7 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
-0.11.1 (unreleased)
+0.11.1 (2013-08-28)
 -------------------
 
 - After running **stage-build**, fix the permissions of the built
