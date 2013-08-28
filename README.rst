@@ -523,6 +523,15 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.11.1 (unreleased)
+-------------------
+
+- After running **stage-build**, fix the permissions of the built
+  software to ensure all users can read the files and directories
+  installed.  (Necessary to deal with sdists that include EGG-INFO with
+  overly restrictive permissions.)
+
+
 0.11.0 (2013-05-06)
 -------------------
 

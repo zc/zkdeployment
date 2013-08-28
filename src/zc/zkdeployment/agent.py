@@ -456,6 +456,9 @@ class Agent(object):
                                     [self._path(
                                         'opt', rpm_name, 'stage-build')],
                                     verbose=self.verbose, return_output=False)
+                                zc.zkdeployment.run_command(
+                                    ['chmod', '-R', 'a+rX', '.'],
+                                    verbose=self.verbose, return_output=False)
                             finally:
                                 os.chdir(here)
                             continue
