@@ -440,7 +440,7 @@ def test_non_empty_etc():
     ERROR Removing u'/etc/z4mmonitor'
     Traceback (most recent call last):
     ...
-    OSError: [Errno 39] Directory not empty: /etc/z4mmonitor'
+    OSError: [Errno ...] Directory not empty: /etc/z4mmonitor'
     INFO Done deploying version 2
 
     >>> agent.close()
