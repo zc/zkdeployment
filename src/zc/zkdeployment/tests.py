@@ -913,7 +913,7 @@ def test_suite():
                 optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE
                 ) +
             manuel.capture.Manuel(),
-            'sync.txt',
+            'sync.txt', 'syncgit.txt',
             setUp=setup_sync,
             tearDown=zope.testing.setupstack.tearDown,
             ))
