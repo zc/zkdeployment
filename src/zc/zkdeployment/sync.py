@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 zookeeper.set_log_stream = lambda f: None
 
 
-
 def svn_cmd(cmd, url): # This exists to be mocked
     return zc.zkdeployment.run_command(['svn', cmd, url], return_output=True)
 
@@ -42,9 +41,9 @@ class SVN:
             contents = self('cat', '%s/%s' % (self.url,  fi))
             yield (fi, contents)
 
+
 def git_cmd(*args): # This exists to be mocked
     return zc.zkdeployment.run_command(('git', )+args, return_output=True)
-
 
 class GIT:
 
