@@ -289,28 +289,6 @@ After importing files ending in .zk, it imports files enfing in .zkx.
 
     >>> svn_cmd_patcher.stop()
 
-
-get_svn_version
-===============
-
-get_svn_version takes the output of an "svn info" command and returns the
-latest revision number (Last Changed Rev).
-
-    >>> svn_body = """Path: .
-    ... URL: svn+ssh://svn.zope.com/repos/main/zookeeper-trees/trunk
-    ... Repository Root: svn+ssh://svn.zope.com/repos/main
-    ... Repository UUID: 32cb22c4-c7e1-0310-b164-a889846e9adb
-    ... Revision: 68578
-    ... Node Kind: directory
-    ... Schedule: normal
-    ... Last Changed Author: jim
-    ... Last Changed Rev: 68528
-    ... Last Changed Date: 2012-04-17 09:56:21 -0400 (Tue, 17 Apr 2012)
-    ... """
-    >>> zc.zkdeployment.sync.get_svn_version(svn_body)
-    68528
-
-
 get_zk_version
 ==============
 

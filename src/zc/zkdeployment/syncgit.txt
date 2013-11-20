@@ -1,0 +1,316 @@
+====================
+Zookeeper Sync (Git)
+====================
+
+    >>> setup_logging()
+
+sync_with_canonical
+===================
+
+sync_with_canonical does the full dance to update a cluster's zookeeper
+tree.
+
+It performs the following actions:
+
+    - Determines if there has been a modification in git
+    - Performs a zkimport for all .zk trees in the cluster
+    - bumps the /hosts/version attribute to the new git revision
+
+First, we'll need to do some setup.
+
+    >>> import os, zc.zk
+    >>> zk = zc.zk.ZK('zookeeper:2181')
+    >>> git_url = 'git@bitbucket.org:zc/cluster'
+    >>> tree_dir = os.path.abspath(os.path.join('.', 'trees'))
+
+    >>> import zc.zkdeployment.sync
+    >>> import mock
+    >>> git_cmd_patcher = mock.patch('zc.zkdeployment.sync.git_cmd')
+
+    >>> def assert_(cond, *args):
+    ...     if not cond:
+    ...         raise AssertionError(*args)
+    >>> def check_url(url):
+    ...     assert_(url ==
+    ...             'git+ssh://git.zope.com/repos/main/home/jim/zkdeployment',
+    ...             url)
+
+    >>> foo_zk = '/foo\n  /bar'
+    >>> bar_zk = '/bar\n  /bar\n  /ham'
+    >>> baz_zk = '/baz\n  /bar'
+    >>> baz_txt = 'I should be ignored.y'
+    >>> git_files = ['foo.zk', 'bar.zk', 'baz.txt']
+    >>> fetched = False
+    >>> git_version = 'deadbeef'
+
+    >>> zk.import_tree('/extra_thing_that_should_be_ignored')
+
+    >>> def fake_git(*args):
+    ...     global fetched
+    ...     if args[0] == 'clone':
+    ...         url, dest = args[1:]
+    ...         assert_(url == git_url, 'url')
+    ...         assert_(dest, tree_dir, 'dest')
+    ...         os.mkdir(tree_dir)
+    ...     else:
+    ...         assert_(args[0:2] == (
+    ...                 '--git-dir=%s/.git' % tree_dir,
+    ...                 '--work-tree=%s' % tree_dir
+    ...                 ), 'preamble')
+    ...         args = list(args[2:])
+    ...         command = args.pop(0)
+    ...         if command == 'fetch':
+    ...             assert_(args == ['origin', 'master'], 'fetch', args)
+    ...             fetched = True
+    ...         elif command == 'merge':
+    ...             assert_(fetched, 'fetched')
+    ...             assert_(args == ['origin/master'], 'merge')
+    ...             fetched = False
+    ...             for name in os.listdir(tree_dir):
+    ...                 if name not in git_files:
+    ...                     os.remove(os.path.join(tree_dir, name))
+    ...             for name in git_files:
+    ...                 with open(os.path.join(tree_dir, name), 'w') as f:
+    ...                     f.write(globals()[name.replace('.', '_')])
+    ...         elif command == 'log':
+    ...             assert_(args == ['-1'], 'log')
+    ...             return 'commit %s\nAuthor: whatever' % git_version
+    ...         else:
+    ...             assert_(False, 'bad command', command)
+    >>> git_cmd_mock = git_cmd_patcher.start()
+    >>> git_cmd_mock.side_effect = fake_git
+
+If there isn't a /hosts node, it will create one and sync the tree:
+
+    >>> def sync(dry_run=False, **kw):
+    ...     zc.zkdeployment.sync.sync_with_canonical(
+    ...         git_url, dry_run=dry_run, tree_directory=tree_dir, **kw)
+
+    >>> sync()
+    INFO VCS Version: deadbeef
+    INFO ZK Version: initial
+    INFO Version mismatch detected, resyncing
+    INFO Importing bar.zk
+    INFO Importing foo.zk
+
+And the tree is updated:
+
+    >>> zk.print_tree()
+    /ZktoolsLocks
+      string_value = 'zktools ZLock dir'
+      /,hosts
+        string_value = 'lock'
+    /bar
+      /bar
+      /ham
+    /extra_thing_that_should_be_ignored
+    /foo
+      /bar
+    /hosts
+      version = u'deadbeef'
+
+When it runs again, and there isn't a change, then it won't do
+anything:
+
+    >>> sync()
+    INFO VCS Version: deadbeef
+    INFO ZK Version: deadbeef
+
+
+Let's delete something from one of the trees, and make sure it
+disappears:
+
+    >>> bar_zk = '/bar\n  /bar'
+    >>> git_version = '0defaced'
+
+    >>> sync()
+    INFO VCS Version: 0defaced
+    INFO ZK Version: deadbeef
+    INFO Version mismatch detected, resyncing
+    INFO Importing bar.zk
+    INFO Importing foo.zk
+
+And the tree is updated:
+
+    >>> zk.print_tree()
+    /ZktoolsLocks
+      string_value = 'zktools ZLock dir'
+      /,hosts
+        string_value = 'lock'
+    /bar
+      /bar
+    /extra_thing_that_should_be_ignored
+    /foo
+      /bar
+    /hosts
+      version = u'0defaced'
+
+If we try to run it again, nothing will happen, since the ZK version now
+matches the VCS version.
+
+    >>> sync()
+    INFO VCS Version: 0defaced
+    INFO ZK Version: 0defaced
+
+Let's bump the version again, and this time try a dry-run.
+
+    >>> git_version = 'feed1234'
+    >>> sync(dry_run=True)
+    INFO VCS Version: feed1234
+    INFO ZK Version: 0defaced
+    INFO Version mismatch detected, resyncing
+    INFO Importing bar.zk (dry run, no action taken)
+    INFO Importing foo.zk (dry run, no action taken)
+
+It didn't do anything, so if we run it again, it will show that there
+are still pending changes.
+
+    >>> sync(dry_run=True)
+    INFO VCS Version: feed1234
+    INFO ZK Version: 0defaced
+    INFO Version mismatch detected, resyncing
+    INFO Importing bar.zk (dry run, no action taken)
+    INFO Importing foo.zk (dry run, no action taken)
+
+Let's finish up and run it for real.
+
+    >>> sync()
+    INFO VCS Version: feed1234
+    INFO ZK Version: 0defaced
+    INFO Version mismatch detected, resyncing
+    INFO Importing bar.zk
+    INFO Importing foo.zk
+
+If you try to sync while some hosts have not yet converged with the previous
+update, you'll get an error.  Here, we'll set up a tree with two hosts, one
+of which is still out of date::
+
+   /hosts
+     version = u'feed1234'
+     /1.2.3.4
+       version = u'feed1234'
+     /1.2.3.5
+       version = u'0defaced'
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+Now we'll try to sync:
+
+    >>> git_version = 'cafecafe'
+    >>> sync()
+    INFO VCS Version: cafecafe
+    INFO ZK Version: feed1234
+    ERROR Version mismatch detected, can't resync since host 1.2.3.5 has not
+    converged (0defaced -> feed1234)
+
+If we run with the `force` flag, we'll do the deployment anyway, since we
+presumably know what we're doing.
+
+    >>> sync(force=True)
+    INFO VCS Version: cafecafe
+    INFO ZK Version: feed1234
+    INFO Version mismatch detected, resyncing
+    INFO Importing bar.zk
+    INFO Importing foo.zk
+
+If we try to sync while another syncer is already updating the tree, we'll get
+an error::
+
+   /hosts
+     version = u'feed1234'
+     /1.2.3.4
+       version = u'feed1234'
+     /1.2.3.5
+       version = u'feed1234'
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+We'll steal the lock and try to do the sync now:
+
+    >>> import zktools.locking
+    >>> cluster_lock = zktools.locking.ZkLock(zk, ',hosts')
+    >>> with zktools.locking.ZkLock(zk, ',hosts'):
+    ...     sync()
+    INFO VCS Version: cafecafe
+    INFO ZK Version: feed1234
+    ERROR Refused to update zookeeper tree, couldn't obtain cluster lock
+
+If we try again without the stolen lock, it'll acquire it just fine and do the
+import.
+
+    >>> sync()
+    INFO VCS Version: cafecafe
+    INFO ZK Version: feed1234
+    INFO Version mismatch detected, resyncing
+    INFO Importing bar.zk
+    INFO Importing foo.zk
+
+::
+
+   /hosts
+     version = u'cafecafe'
+     /1.2.3.4
+       version = u'cafecafe'
+     /1.2.3.5
+       version = u'cafecafe'
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+Layered trees
+-------------
+
+Sometimes, you need to layer information over nodes provides by other
+files. For example, you might have a base tree that you augment for
+staging or for off-site replication.
+
+After importing files ending in .zk, it imports files ending in .zkx.
+
+    >>> foo_zkx = '/foo\n  /beep'
+    >>> git_files = ['foo.zkx', 'foo.zk', 'bar.zk', 'baz.txt']
+    >>> git_version = 'aceace42'
+    >>> sync()
+    INFO VCS Version: aceace42
+    INFO ZK Version: cafecafe
+    INFO Version mismatch detected, resyncing
+    INFO Importing bar.zk
+    INFO Importing foo.zk
+    INFO Importing foo.zkx
+
+    >>> zk.print_tree()
+    /ZktoolsLocks
+      string_value = 'zktools ZLock dir'
+      /,hosts
+        string_value = 'lock'
+    /bar
+      /bar
+    /extra_thing_that_should_be_ignored
+    /foo
+      /bar
+      /beep
+    /hosts
+      version = u'aceace42'
+      /1.2.3.4
+        version = u'cafecafe'
+      /1.2.3.5
+        version = u'cafecafe'
+
+.. cleanup:
+
+    >>> git_cmd_patcher.stop()
+
+ALL STOP
+========
+
+If the hosts node has a version of None, the syncer will refuse to
+run:
+
+    >>> zk.properties('/hosts').update(version=None)
+    >>> git_version = 'caca8765'
+    >>> sync()
+    CRITICAL ALL STOP, cluster version is None

@@ -1,12 +1,11 @@
 import logging
 import optparse
-import urlparse
+import os
 import zc.zk
 import zc.zkdeployment
 import zktools.locking
 import zookeeper
 
-SVN_CMD = 'svn'
 ZK_LOCATION = 'zookeeper:2181'
 
 logger = logging.getLogger(__name__)
@@ -15,15 +14,64 @@ logger = logging.getLogger(__name__)
 zookeeper.set_log_stream = lambda f: None
 
 
-def svn_cmd(cmd, url):
-    return zc.zkdeployment.run_command([SVN_CMD, cmd, url], return_output=True)
+def svn_cmd(cmd, url): # This exists to be mocked
+    return zc.zkdeployment.run_command(['svn', cmd, url], return_output=True)
+
+class SVN:
+
+    def __init__(self, url):
+        self.url = url
+        self.version = self.get_version()
+
+    def __call__(self, cmd, url=None):
+        return svn_cmd(cmd, url or self.url)
+
+    def get_version(self):
+        for line in self('info').splitlines():
+            if line.startswith('Last Changed Rev:'):
+                return int(line.split()[-1])
+
+    def __iter__(self):
+        allfiles = [fi for fi in self('ls').strip().split('\n')]
+        zkfiles = [fi for fi in allfiles if fi.endswith('.zk')]
+        zkxfiles = [fi for fi in allfiles if fi.endswith('.zkx')]
+
+        for fi in zkfiles + zkxfiles:
+            contents = self('cat', '%s/%s' % (self.url,  fi))
+            yield (fi, contents)
 
 
-def get_svn_version(body):
-    for line in body.splitlines():
-        if line.startswith('Last Changed Rev:'):
-            return int(line.split()[-1])
+def git_cmd(*args): # This exists to be mocked
+    return zc.zkdeployment.run_command(('git', )+args, return_output=True)
 
+class GIT:
+
+    def __init__(self, url, tree_directory):
+        self.trees = tree_directory
+        if not os.path.exists(self.trees):
+            git_cmd('clone', url, self.trees)
+
+        self('fetch', 'origin', 'master')
+        self('merge', 'origin/master')
+        log = self('log', '-1')
+        self.version = log.split()[1]
+
+    def __call__(self, *args):
+        return git_cmd(
+            '--git-dir=%s/.git' % self.trees,
+            '--work-tree=%s' % self.trees,
+            *args)
+
+    def __iter__(self):
+        allfiles = sorted(os.listdir(self.trees))
+        zkfiles = [fi for fi in allfiles if fi.endswith('.zk')]
+        zkxfiles = [fi for fi in allfiles if fi.endswith('.zkx')]
+
+        for fi in zkfiles + zkxfiles:
+            with open(os.path.join(self.trees, fi)) as f:
+                contents = f.read()
+
+            yield (fi, contents)
 
 def get_zk_version(zk):
     try:
@@ -32,7 +80,7 @@ def get_zk_version(zk):
         zk.import_tree('/hosts\n  version="initial"')
         return "initial"
 
-def sync_with_canonical(url, dry_run=False, force=False):
+def sync_with_canonical(url, dry_run=False, force=False, tree_directory=None):
     zk = zc.zk.ZK(ZK_LOCATION)
     zk_version = get_zk_version(zk)
     if zk_version is None:
@@ -40,32 +88,32 @@ def sync_with_canonical(url, dry_run=False, force=False):
         if not force:
             return
 
-    info_body = svn_cmd('info', url)
-    svn_version = get_svn_version(info_body)
-    logger.info("VCS Version: " + str(svn_version))
+    if url.startswith('svn'):
+        vcs = SVN(url)
+    else:
+        vcs = GIT(url, tree_directory)
+
+    logger.info("VCS Version: " + str(vcs.version))
     logger.info("ZK Version: " + str(zk_version))
-    if zk_version != svn_version:
-        for child in zk.get_children('/hosts'):
-            host_version = zk.properties('/hosts/' + child)['version']
-            if host_version != zk_version and not force:
-                logger.error(
-                    "Version mismatch detected, can't resync since " +
-                    "host %s has not converged (%s -> %s)" % (
-                        child, host_version, zk_version))
-                return
+    if zk_version != vcs.version:
+        if not force:
+            for child in zk.get_children('/hosts'):
+                host_version = zk.properties('/hosts/' + child)['version']
+                if host_version != zk_version:
+                    logger.error(
+                        "Version mismatch detected, can't resync since " +
+                        "host %s has not converged (%s -> %s)" % (
+                            child, host_version, zk_version))
+                    return
+
         cluster_lock = zktools.locking.ZkLock(zk, ',hosts')
         try:
             if cluster_lock.acquire(0):
                 logger.info("Version mismatch detected, resyncing")
 
-                allfiles = [fi for fi in svn_cmd('ls', url).strip().split('\n')]
-                zkfiles = [fi for fi in allfiles if fi.endswith('.zk')]
-                zkxfiles = [fi for fi in allfiles if fi.endswith('.zkx')]
-
                 # Import changes
-                for fi in zkfiles + zkxfiles:
+                for fi, contents in vcs:
                     output = ' '.join(('Importing', fi))
-                    contents = svn_cmd('cat', '%s/%s' % (url,  fi))
                     if dry_run:
                         output += ' (dry run, no action taken)'
                     logger.info(output)
@@ -73,7 +121,7 @@ def sync_with_canonical(url, dry_run=False, force=False):
                         zk.import_tree(contents, trim=fi.endswith('.zk'))
                 # bump version number
                 if not dry_run:
-                    zk.properties('/hosts').update(version=svn_version)
+                    zk.properties('/hosts').update(version=vcs.version)
             else:
                 logger.error("Refused to update zookeeper tree, "
                     "couldn't obtain cluster lock")
@@ -84,19 +132,16 @@ def sync_with_canonical(url, dry_run=False, force=False):
 def main():
     logging.basicConfig(level=logging.WARNING)
     parser = optparse.OptionParser()
-    parser.add_option('-d', '--dry-run', dest='dry_run',
-        action='store_true',
+    parser.add_option('-d', '--dry-run', action='store_true',
         help="Don't actually modify the zookeeper db")
-    parser.add_option('-f', '--force', dest='force',
-        action='store_true',
+    parser.add_option('-f', '--force', action='store_true',
         help="Force tree update, even if we detect errors")
-    parser.add_option('-u', '--url', dest='url',
-        default=None, help="URL to sync")
+    parser.add_option('-u', '--url', default=None, help="URL to sync")
+    parser.add_option('-t', '--tree-directory', default=None,
+                      help="Working directiry for git repository")
     (options, args) = parser.parse_args()
-    dry_run = options.dry_run
-    force = options.force
-    url = options.url
-    sync_with_canonical(url, dry_run, force)
+    sync_with_canonical(
+        options.url, options.dry_run, options.force, options.tree_directory)
 
 
 if __name__ == '__main__':
