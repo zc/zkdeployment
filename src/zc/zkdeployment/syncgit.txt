@@ -41,7 +41,7 @@ First, we'll need to do some setup.
     >>> baz_txt = 'I should be ignored.y'
     >>> git_files = ['foo.zk', 'bar.zk', 'baz.txt']
     >>> fetched = False
-    >>> git_version = '124'
+    >>> git_version = 'deadbeef'
 
     >>> zk.import_tree('/extra_thing_that_should_be_ignored')
 
@@ -87,7 +87,7 @@ If there isn't a /hosts node, it will create one and sync the tree:
     ...         git_url, dry_run=dry_run, tree_directory=tree_dir, **kw)
 
     >>> sync()
-    INFO VCS Version: 124
+    INFO VCS Version: deadbeef
     INFO ZK Version: initial
     INFO Version mismatch detected, resyncing
     INFO Importing bar.zk
@@ -107,25 +107,25 @@ And the tree is updated:
     /foo
       /bar
     /hosts
-      version = u'124'
+      version = u'deadbeef'
 
 When it runs again, and there isn't a change, then it won't do
 anything:
 
     >>> sync()
-    INFO VCS Version: 124
-    INFO ZK Version: 124
+    INFO VCS Version: deadbeef
+    INFO ZK Version: deadbeef
 
 
 Let's delete something from one of the trees, and make sure it
 disappears:
 
     >>> bar_zk = '/bar\n  /bar'
-    >>> git_version = '125'
+    >>> git_version = '0defaced'
 
     >>> sync()
-    INFO VCS Version: 125
-    INFO ZK Version: 124
+    INFO VCS Version: 0defaced
+    INFO ZK Version: deadbeef
     INFO Version mismatch detected, resyncing
     INFO Importing bar.zk
     INFO Importing foo.zk
@@ -143,21 +143,21 @@ And the tree is updated:
     /foo
       /bar
     /hosts
-      version = u'125'
+      version = u'0defaced'
 
 If we try to run it again, nothing will happen, since the ZK version now
 matches the VCS version.
 
     >>> sync()
-    INFO VCS Version: 125
-    INFO ZK Version: 125
+    INFO VCS Version: 0defaced
+    INFO ZK Version: 0defaced
 
 Let's bump the version again, and this time try a dry-run.
 
-    >>> git_version = '126'
+    >>> git_version = 'feed1234'
     >>> sync(dry_run=True)
-    INFO VCS Version: 126
-    INFO ZK Version: 125
+    INFO VCS Version: feed1234
+    INFO ZK Version: 0defaced
     INFO Version mismatch detected, resyncing
     INFO Importing bar.zk (dry run, no action taken)
     INFO Importing foo.zk (dry run, no action taken)
@@ -166,8 +166,8 @@ It didn't do anything, so if we run it again, it will show that there
 are still pending changes.
 
     >>> sync(dry_run=True)
-    INFO VCS Version: 126
-    INFO ZK Version: 125
+    INFO VCS Version: feed1234
+    INFO ZK Version: 0defaced
     INFO Version mismatch detected, resyncing
     INFO Importing bar.zk (dry run, no action taken)
     INFO Importing foo.zk (dry run, no action taken)
@@ -175,8 +175,8 @@ are still pending changes.
 Let's finish up and run it for real.
 
     >>> sync()
-    INFO VCS Version: 126
-    INFO ZK Version: 125
+    INFO VCS Version: feed1234
+    INFO ZK Version: 0defaced
     INFO Version mismatch detected, resyncing
     INFO Importing bar.zk
     INFO Importing foo.zk
@@ -186,11 +186,11 @@ update, you'll get an error.  Here, we'll set up a tree with two hosts, one
 of which is still out of date::
 
    /hosts
-     version = u'126'
+     version = u'feed1234'
      /1.2.3.4
-       version = u'126'
+       version = u'feed1234'
      /1.2.3.5
-       version = u'125'
+       version = u'0defaced'
 
 .. -> tree
 
@@ -198,19 +198,19 @@ of which is still out of date::
 
 Now we'll try to sync:
 
-    >>> git_version = '127'
+    >>> git_version = 'cafecafe'
     >>> sync()
-    INFO VCS Version: 127
-    INFO ZK Version: 126
+    INFO VCS Version: cafecafe
+    INFO ZK Version: feed1234
     ERROR Version mismatch detected, can't resync since host 1.2.3.5 has not
-    converged (125 -> 126)
+    converged (0defaced -> feed1234)
 
 If we run with the `force` flag, we'll do the deployment anyway, since we
 presumably know what we're doing.
 
     >>> sync(force=True)
-    INFO VCS Version: 127
-    INFO ZK Version: 126
+    INFO VCS Version: cafecafe
+    INFO ZK Version: feed1234
     INFO Version mismatch detected, resyncing
     INFO Importing bar.zk
     INFO Importing foo.zk
@@ -219,11 +219,11 @@ If we try to sync while another syncer is already updating the tree, we'll get
 an error::
 
    /hosts
-     version = u'126'
+     version = u'feed1234'
      /1.2.3.4
-       version = u'126'
+       version = u'feed1234'
      /1.2.3.5
-       version = u'126'
+       version = u'feed1234'
 
 .. -> tree
 
@@ -235,16 +235,16 @@ We'll steal the lock and try to do the sync now:
     >>> cluster_lock = zktools.locking.ZkLock(zk, ',hosts')
     >>> with zktools.locking.ZkLock(zk, ',hosts'):
     ...     sync()
-    INFO VCS Version: 127
-    INFO ZK Version: 126
+    INFO VCS Version: cafecafe
+    INFO ZK Version: feed1234
     ERROR Refused to update zookeeper tree, couldn't obtain cluster lock
 
 If we try again without the stolen lock, it'll acquire it just fine and do the
 import.
 
     >>> sync()
-    INFO VCS Version: 127
-    INFO ZK Version: 126
+    INFO VCS Version: cafecafe
+    INFO ZK Version: feed1234
     INFO Version mismatch detected, resyncing
     INFO Importing bar.zk
     INFO Importing foo.zk
@@ -252,11 +252,11 @@ import.
 ::
 
    /hosts
-     version = u'127'
+     version = u'cafecafe'
      /1.2.3.4
-       version = u'127'
+       version = u'cafecafe'
      /1.2.3.5
-       version = u'127'
+       version = u'cafecafe'
 
 .. -> tree
 
@@ -273,10 +273,10 @@ After importing files ending in .zk, it imports files ending in .zkx.
 
     >>> foo_zkx = '/foo\n  /beep'
     >>> git_files = ['foo.zkx', 'foo.zk', 'bar.zk', 'baz.txt']
-    >>> git_version = '128'
+    >>> git_version = 'aceace42'
     >>> sync()
-    INFO VCS Version: 128
-    INFO ZK Version: 127
+    INFO VCS Version: aceace42
+    INFO ZK Version: cafecafe
     INFO Version mismatch detected, resyncing
     INFO Importing bar.zk
     INFO Importing foo.zk
@@ -294,11 +294,11 @@ After importing files ending in .zk, it imports files ending in .zkx.
       /bar
       /beep
     /hosts
-      version = u'128'
+      version = u'aceace42'
       /1.2.3.4
-        version = u'127'
+        version = u'cafecafe'
       /1.2.3.5
-        version = u'127'
+        version = u'cafecafe'
 
 .. cleanup:
 
@@ -311,6 +311,6 @@ If the hosts node has a version of None, the syncer will refuse to
 run:
 
     >>> zk.properties('/hosts').update(version=None)
-    >>> git_version = '129'
+    >>> git_version = 'caca8765'
     >>> sync()
     CRITICAL ALL STOP, cluster version is None
