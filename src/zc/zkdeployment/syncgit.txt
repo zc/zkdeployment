@@ -269,7 +269,7 @@ Sometimes, you need to layer information over nodes provides by other
 files. For example, you might have a base tree that you augment for
 staging or for off-site replication.
 
-After importing files ending in .zk, it imports files enfing in .zkx.
+After importing files ending in .zk, it imports files ending in .zkx.
 
     >>> foo_zkx = '/foo\n  /beep'
     >>> git_files = ['foo.zkx', 'foo.zk', 'bar.zk', 'baz.txt']

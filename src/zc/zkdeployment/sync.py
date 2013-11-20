@@ -1,7 +1,6 @@
 import logging
 import optparse
 import os
-import urlparse
 import zc.zk
 import zc.zkdeployment
 import zktools.locking
