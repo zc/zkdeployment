@@ -523,6 +523,11 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.12.1 (2013-11-28)
+-------------------
+
+Fixed: git was used for file urls.
+
 0.12.0 (2013-11-27)
 -------------------
 

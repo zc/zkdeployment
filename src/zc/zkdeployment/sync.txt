@@ -42,9 +42,7 @@ First, we'll need to do some setup.
     ...     if not cond:
     ...         raise AssertionError(*args)
     >>> def check_url(url):
-    ...     assert_(url ==
-    ...             'svn+ssh://svn.zope.com/repos/main/home/jim/zkdeployment',
-    ...             url)
+    ...     assert_(url == svn_url, url)
 
     >>> foo_zk = '/foo\n  /bar'
     >>> bar_zk = '/bar\n  /bar\n  /ham'
@@ -105,6 +103,10 @@ disappears:
 
     >>> bar_zk = '/bar\n  /bar'
     >>> svn_info = svn_info.replace('124', '125')
+
+We'll also make sure that svn us used for file urls:
+
+    >>> svn_url = 'file:///repos/main/home/jim/zkdeployment'
 
     >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
     INFO VCS Version: 125

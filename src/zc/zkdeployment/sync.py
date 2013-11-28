@@ -88,7 +88,7 @@ def sync_with_canonical(url, dry_run=False, force=False, tree_directory=None):
         if not force:
             return
 
-    if url.startswith('svn'):
+    if url.startswith('svn') or url.startswith('file://'):
         vcs = SVN(url)
     else:
         vcs = GIT(url, tree_directory)
