@@ -60,7 +60,7 @@ First, we'll need to do some setup.
     ...         args = list(args[2:])
     ...         command = args.pop(0)
     ...         if command == 'fetch':
-    ...             assert_(args == ['origin', 'master'], 'fetch', args)
+    ...             assert_(args == [], 'fetch', args)
     ...             fetched = True
     ...         elif command == 'merge':
     ...             assert_(fetched, 'fetched')

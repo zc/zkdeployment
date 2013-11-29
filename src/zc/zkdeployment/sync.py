@@ -51,7 +51,7 @@ class GIT:
         if not os.path.exists(self.trees):
             git_cmd('clone', url, self.trees)
 
-        self('fetch', 'origin', 'master')
+        self('fetch')
         self('merge', 'origin/master')
         log = self('log', '-1')
         self.version = log.split()[1]
