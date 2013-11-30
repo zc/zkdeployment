@@ -523,6 +523,18 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.13.0 (2013-11-30)
+-------------------
+
+- Setting the /hosts version to False will prevent agent deployments,
+  but will not prevent syncing.  This provides a way to cause a sync
+  indirectly, which is helpful because with git, syncing must be done
+  by root.
+
+- Fixed: deployments failed subtly with string versions.  The first
+  deployment would mostly complete (except for a log message), but
+  subsequent deployments would fail.
+
 0.12.2 (2013-11-29)
 -------------------
 

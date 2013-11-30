@@ -124,12 +124,14 @@ installation script for everything that's installed:
     >>> hosts_properties = zk.properties('/hosts')
     >>> import time
     >>> version = 1
-    >>> wait = .05
-    >>> def bump_version(inc=1):
+    >>> wait = .5
+    >>> def set_hosts_version(value):
+    ...     hosts_properties.update(version=value)
+    ...     time.sleep(wait)
+    >>> def bump_version(inc=1, value=None):
     ...     global version
     ...     version += inc
-    ...     hosts_properties.update(version=version)
-    ...     time.sleep(wait)
+    ...     set_hosts_version(version)
     >>> bump_version()
     INFO ============================================================
     INFO Deploying version 2
@@ -1737,6 +1739,38 @@ Let's make sure uninstalling works too::
     INFO yum -y remove varnish
     yum -y remove varnish
     INFO Done deploying version 35
+
+String versions
+===============
+
+Versions can be strings:
+
+    >>> set_hosts_version('string-version-a')
+    INFO ============================================================
+    INFO Deploying version string-version-a
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO Done deploying version string-version-a
+
+Fail safe error handling
+========================
+
+When an error occurs, the cluster version is set to None. A this
+point, agents are unwilling to deploy until a human sorts the problem
+out and sets the cluster version to a number or a string.
+
+    >>> set_hosts_version(None)
+
+Deployments will also be suppressed if the cluster version is False:
+
+    >>> set_hosts_version(False)
+
+Agents won't do deployments if the version is false, but the VCS sync
+tool *will* still sync VCS with the ZooKeeper tree if the version is
+False.  When you've solved a deployment problem by updating VCS, you
+can cause the update to be propagated on the next sync by setting the
+``/hosts`` version to False.
 
 .. tear down
 

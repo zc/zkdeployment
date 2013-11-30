@@ -146,7 +146,9 @@ class Agent(object):
                 @self.hosts_properties
                 def cluster_changed(properties):
                     self.cluster_version = properties.get('version')
-                    if self.cluster_version is not None:
+                    if ((self.cluster_version is not None) and
+                        (self.cluster_version is not False)
+                        ):
                         queue.put(True)
                     # import warnings; warnings.warn('Undebug')
                     # self.deploy()
@@ -549,7 +551,7 @@ class Agent(object):
             if self.monitor_cb:
                 self.monitor_cb()
         else:
-            logger.info('Done deploying version %s', + cluster_version)
+            logger.info('Done deploying version %s', cluster_version)
             self.failing = False
 
     def run(self):
