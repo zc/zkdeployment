@@ -236,6 +236,26 @@ import.
     INFO Importing foo.zk
     INFO Importing bar.zk
 
+
+Another way to force a sync is by setting the cluster version to False::
+
+   /hosts
+     version = False
+     /1.2.3.4
+       version = 126
+     /1.2.3.5
+       version = 125
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+    >>> zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
+    INFO VCS Version: 127
+    INFO ZK Version: False
+    INFO Version mismatch detected, resyncing
+    INFO Importing foo.zk
+    INFO Importing bar.zk
+
 ::
 
    /hosts

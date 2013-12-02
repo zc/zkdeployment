@@ -523,6 +523,12 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.13.1 (2013-12-02)
+-------------------
+
+Fixed: Syncer didn't treat a cluster version of False as force.
+
+
 0.13.0 (2013-11-30)
 -------------------
 

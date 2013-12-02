@@ -124,7 +124,7 @@ installation script for everything that's installed:
     >>> hosts_properties = zk.properties('/hosts')
     >>> import time
     >>> version = 1
-    >>> wait = .5
+    >>> wait = .1
     >>> def set_hosts_version(value):
     ...     hosts_properties.update(version=value)
     ...     time.sleep(wait)
@@ -756,8 +756,7 @@ because it has both role-based and host-based configurations:
     ...
     ValueError: Found a host-based deployment at
     /cust/someapp/cms/deploy/host42 but the host has a role, cache.
-    CRITICAL FAILED deploying version 15
-    WARNING Not deploying because cluster version is None
+    CRITICAL FAILED deploying version ...
 
 If we deploy to the role, though::
 

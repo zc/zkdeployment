@@ -96,7 +96,7 @@ def sync_with_canonical(url, dry_run=False, force=False, tree_directory=None):
     logger.info("VCS Version: " + str(vcs.version))
     logger.info("ZK Version: " + str(zk_version))
     if zk_version != vcs.version:
-        if not force:
+        if not (force or zk_version is False):
             for child in zk.get_children('/hosts'):
                 host_version = zk.properties('/hosts/' + child)['version']
                 if host_version != zk_version:
