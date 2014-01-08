@@ -523,6 +523,16 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.14.1 (2014-01-08)
+-------------------
+
+Switched to zc.zk 2 and to using kazoo for locking.
+
+- This should make ZooKeeper communication more reliable.
+
+- Lock attempts now show who's requesting them and who has the
+  cuurent lock.
+
 0.13.1 (2013-12-02)
 -------------------
 

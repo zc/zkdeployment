@@ -17,9 +17,7 @@ import zc.thread
 import zc.zk
 import zc.zkdeployment
 import zim.messaging
-import zktools.locking
 import zope.component
-import zookeeper
 
 parser = optparse.OptionParser()
 parser.add_option(
@@ -34,9 +32,6 @@ parser.add_option(
     "Assert that the name 'zookeeper' resolves to the given address.\n"
     "This is useful when staging to make sure you don't accidentally connect\n"
     "to a production ZooKeeper server.")
-
-# Hack, zktools.locking calls zookeeper.set_log_stream, which messes up zk.
-zookeeper.set_log_stream = lambda f: None
 
 DONT_CARE = object()
 
@@ -88,22 +83,20 @@ class Agent(object):
         self.zk = zc.zk.ZK(ZK_LOCATION)
         try:
             if self.host_identifier in self.zk.get_children('/hosts'):
-                _, meta = self.zk.get(host_path)
-                if meta.get('ephemeralOwner'):
+                if self.zk.is_ephemeral(host_path):
                     raise ValueError('Another agent is running')
-                version = self.zk.get_properties(
-                    '/hosts/' + self.host_identifier).get(
+                version = self.zk.properties(
+                    '/hosts/' + self.host_identifier, False).get(
                     'version', version)
                 self.zk.delete(host_path)
 
             self.version = version
 
-            self.zk.create(
-                host_path, '', zc.zk.OPEN_ACL_UNSAFE, zookeeper.EPHEMERAL)
+            self.zk.register('/hosts', self.host_identifier)
 
             self.host_name = socket.getfqdn()
 
-            host_properties = self.zk.properties(host_path)
+            host_properties = self.zk.properties(host_path, False)
             self.host_properties = host_properties
             host_properties.set(
                 name = self.host_name,
@@ -161,8 +154,7 @@ class Agent(object):
         if hasattr(self, 'deploy_thread'):
             self.queue.put(False)
             self.deploy_thread.join(33)
-        if self.zk.handle is not None:
-            self.zk.close()
+        self.zk.close()
 
     def get_deployments(self):
         seen = set()
@@ -183,7 +175,7 @@ class Agent(object):
                         ):
                     continue
 
-            properties = self.zk.properties(path)
+            properties = self.zk.properties(path, False)
             n = properties.get('n', 1)
             path = path[:path.find('/deploy/')]
             if path in seen:
@@ -193,7 +185,7 @@ class Agent(object):
                     % (path, self.host_name, self.host_identifier)
                     )
             seen.add(path)
-            properties = self.zk.properties(path)
+            properties = self.zk.properties(path, False)
             app = properties['type'].split()
             if len(app) == 1:
                 [app] = app
@@ -496,8 +488,9 @@ class Agent(object):
 
             # Now update/install the needed deployments
             for deployment in sorted(deployments, key=lambda d: (d.path, d.n)):
-                with zktools.locking.ZkLock(
-                    self.zk, path2name(deployment.path)
+                with self.zk.client.Lock(
+                    '/agent-locks/'+ path2name(deployment.path),
+                    '%s (%s)' % (self.host_name, self.host_identifier),
                     ):
                     # The reason for the lock here is to prevent
                     # more than one deployment for an app at a
@@ -533,8 +526,7 @@ class Agent(object):
                         logger.exception('Removing %r', '/etc/' + app_name)
 
             self.version = cluster_version
-            self.zk.properties('/hosts/' + self.host_identifier).update(
-                version=cluster_version)
+            self.host_properties['version'] = cluster_version
             with open(os.path.join(self.root, VERSION_LOCATION), 'w') as fi:
                 fi.write(json.dumps(cluster_version))
 
