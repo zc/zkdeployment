@@ -28,7 +28,7 @@ default = zc.zkdeployment.tests:TestRecipe
 """
 
 extras_require = dict(test=[
-        'manuel', 'mock', 'zc.zk [static]', 'zope.testing'])
+        'manuel', 'mock', 'zope.testing'])
 
 setup(
     name = name,
@@ -46,6 +46,7 @@ setup(
         'setuptools',
         'simplejson',
         'zc.thread',
+        'zc.zk',
         'zim.messaging',
         'zope.component',
         'zope.interface',
