@@ -523,6 +523,11 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.14.1 (2014-01-08)
+-------------------
+
+Fixed packaging bug.
+
 0.14.0 (2014-01-08)
 -------------------
 
