@@ -47,7 +47,6 @@ setup(
         'simplejson',
         'zc.thread',
         'zim.messaging',
-        'zktools',
         'zope.component',
         'zope.interface',
         ],
