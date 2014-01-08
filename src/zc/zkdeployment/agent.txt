@@ -74,12 +74,12 @@ of the deployments:
 
     >>> sorted(agent.get_deployments())
     [Deployment(app=u'z4m', subtype=None, version=u'1.0.0', rpm_name=u'z4m',
-                path='/cust/someapp/cms', n=0),
+                path=u'/cust/someapp/cms', n=0),
      Deployment(app=u'z4m', subtype=None, version=u'1.0.0', rpm_name=u'z4m',
-                path='/cust2/someapp/cms', n=0),
+                path=u'/cust2/someapp/cms', n=0),
      Deployment(app=u'z4mmonitor', subtype=None, version=u'1.1.0',
                 rpm_name=u'z4mmonitor',
-                path='/cust/someapp/monitor', n=0)]
+                path=u'/cust/someapp/monitor', n=0)]
 
 This is compared with the installed applications on its host:
 
@@ -124,7 +124,7 @@ installation script for everything that's installed:
     >>> hosts_properties = zk.properties('/hosts')
     >>> import time
     >>> version = 1
-    >>> wait = .1
+    >>> wait = .1 if ZooKeeper else .5
     >>> def set_hosts_version(value):
     ...     hosts_properties.update(version=value)
     ...     time.sleep(wait)

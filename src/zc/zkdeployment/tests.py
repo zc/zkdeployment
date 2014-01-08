@@ -870,7 +870,10 @@ class Lock:
         self.rpath = self.path + '/' + str(random.randint(1<<30, 1<<31))
         self.client.create(self.rpath, self.identifier)
         lock = self.locks.setdefault(self.path, threading.Lock())
-        return lock.acquire(blocking)
+        acquired = lock.acquire(blocking)
+        if not acquired:
+            self.client.delete(self.rpath)
+        return acquired
 
     def release(self):
         self.client.delete(self.rpath)
@@ -930,6 +933,7 @@ def test_suite():
     checker = zope.testing.renormalizing.RENormalizing([
         (re.compile(r'\S+TEST_ROOT'), ''),
         (re.compile(r'INFO DEBUG: [^\n]+\n'), ''),
+        (re.compile(r"u'/"), "'/"),
         ])
     suite.addTest(
         manuel.testing.TestSuite(

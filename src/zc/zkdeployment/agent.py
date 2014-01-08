@@ -92,7 +92,8 @@ class Agent(object):
 
             self.version = version
 
-            self.zk.register('/hosts', self.host_identifier)
+            self.zk.register('/hosts', self.host_identifier,
+                             acl=zc.zk.OPEN_ACL_UNSAFE)
 
             self.host_name = socket.getfqdn()
 

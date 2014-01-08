@@ -296,8 +296,6 @@ After importing files ending in .zk, it imports files enfing in .zkx.
       /1.2.3.5
         version = 127
     /hosts-lock
-      /...
-        string_value = '...'
 
 .. cleanup:
 

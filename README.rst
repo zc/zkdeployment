@@ -523,6 +523,12 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.14.2 (2014-01-08)
+-------------------
+
+Fixed: Host nodes were created by the agent with wrong permissions,
+       preventing updates.
+
 0.14.1 (2014-01-08)
 -------------------
 

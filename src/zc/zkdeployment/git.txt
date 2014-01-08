@@ -14,7 +14,7 @@ Staging with git
     >>> zk = zc.zk.ZK("zookeeper:2181")
     >>> hosts_properties = zk.properties('/hosts')
     >>> version = 1
-    >>> wait = .05
+    >>> wait = .1 if ZooKeeper else .5
     >>> def bump_version(inc=1):
     ...     global version
     ...     version += inc

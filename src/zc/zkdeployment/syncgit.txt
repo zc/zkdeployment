@@ -288,8 +288,6 @@ After importing files ending in .zk, it imports files ending in .zkx.
       /1.2.3.5
         version = u'cafecafe'
     /hosts-lock
-      /...
-        string_value = '...'
 
 .. cleanup:
 
