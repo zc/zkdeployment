@@ -40,7 +40,7 @@ cp -r $RPM_BUILD_DIR/%{source} %{buildroot}/opt/%{name}
 rm -rf %{buildroot}/opt/%{name}/release-distributions
 
 # Gaaaa! buildout doesn't handle relative paths in egg links. :(
-sed -i s-/tmp/zc.%{name}-- \
+sed -i s-/tmp/%{name}-- \
    %{buildroot}/opt/%{name}/develop-eggs/zc.%{name}.egg-link 
 %clean
 rm -rf %{buildroot}
