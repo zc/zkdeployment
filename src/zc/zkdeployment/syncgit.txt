@@ -96,10 +96,6 @@ If there isn't a /hosts node, it will create one and sync the tree:
 And the tree is updated:
 
     >>> zk.print_tree()
-    /ZktoolsLocks
-      string_value = 'zktools ZLock dir'
-      /,hosts
-        string_value = 'lock'
     /bar
       /bar
       /ham
@@ -108,6 +104,7 @@ And the tree is updated:
       /bar
     /hosts
       version = u'deadbeef'
+    /hosts-lock
 
 When it runs again, and there isn't a change, then it won't do
 anything:
@@ -133,10 +130,6 @@ disappears:
 And the tree is updated:
 
     >>> zk.print_tree()
-    /ZktoolsLocks
-      string_value = 'zktools ZLock dir'
-      /,hosts
-        string_value = 'lock'
     /bar
       /bar
     /extra_thing_that_should_be_ignored
@@ -144,6 +137,7 @@ And the tree is updated:
       /bar
     /hosts
       version = u'0defaced'
+    /hosts-lock
 
 If we try to run it again, nothing will happen, since the ZK version now
 matches the VCS version.
@@ -231,9 +225,7 @@ an error::
 
 We'll steal the lock and try to do the sync now:
 
-    >>> import zktools.locking
-    >>> cluster_lock = zktools.locking.ZkLock(zk, ',hosts')
-    >>> with zktools.locking.ZkLock(zk, ',hosts'):
+    >>> with zk.client.Lock('/hosts-lock', 'test'):
     ...     sync()
     INFO VCS Version: cafecafe
     INFO ZK Version: feed1234
@@ -282,11 +274,7 @@ After importing files ending in .zk, it imports files ending in .zkx.
     INFO Importing foo.zk
     INFO Importing foo.zkx
 
-    >>> zk.print_tree()
-    /ZktoolsLocks
-      string_value = 'zktools ZLock dir'
-      /,hosts
-        string_value = 'lock'
+    >>> zk.print_tree() # doctest: +ELLIPSIS
     /bar
       /bar
     /extra_thing_that_should_be_ignored
@@ -299,6 +287,9 @@ After importing files ending in .zk, it imports files ending in .zkx.
         version = u'cafecafe'
       /1.2.3.5
         version = u'cafecafe'
+    /hosts-lock
+      /...
+        string_value = '...'
 
 .. cleanup:
 

@@ -25,10 +25,12 @@ import manuel.footnote
 import manuel.testing
 import mock
 import os
+import random
 import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import traceback
 import unittest
@@ -563,8 +565,8 @@ def agent_run():
     """
     >>> import signal
     >>> agent = zc.zkdeployment.agent.Agent()
-    >>> agent.zk.handle
-    0
+    >>> agent.zk.client.state
+    'CONNECTED'
     >>> with mock.patch('signal.signal'):
     ...   with mock.patch('zc.zkdeployment.agent.signallableblock') as block:
     ...      agent.run()
@@ -576,7 +578,8 @@ def agent_run():
     ...      else: assert_(False)
 
     The agent's zk connection is closed
-    >>> agent.zk.handle
+    >>> agent.zk.client.state
+    'LOST'
     """
 
 def switching_subversion_urls():
@@ -739,7 +742,7 @@ def agent_refuse_to_update_to_None():
 def agent_bails_on_None():
     r"""
 
-    If an agent becomes unblocked by lock releasing and fins the
+    If an agent becomes unblocked by lock releasing and finds the
     cluster version to be None, it will abandon the update.
 
     >>> setup_logging()
@@ -754,10 +757,10 @@ def agent_bails_on_None():
     >>> agent = zc.zkdeployment.agent.Agent()
     INFO Agent starting, cluster 1, host 1
 
-    >>> import zktools.locking
-    >>> lock = zktools.locking.ZkLock(zk, 'app')
+    >>> lock = zk.client.Lock('/agent-locks/app', '42')
     >>> lock.acquire()
     True
+
     >>> zk.import_tree('''
     ... /app : foo
     ...     version = '1'
@@ -851,6 +854,39 @@ class TestStream:
 
     def write(self, text):
         sys.stdout.write(text)
+
+class Lock:
+
+    random = random.Random(0)
+    locks = {}
+
+    def __init__(self, client, path, identifier):
+        self.client = client
+        self.path = path
+        self.identifier = identifier
+
+    def acquire(self, blocking=1):
+        self.client.ensure_path(self.path)
+        self.rpath = self.path + '/' + str(random.randint(1<<30, 1<<31))
+        self.client.create(self.rpath, self.identifier)
+        lock = self.locks.setdefault(self.path, threading.Lock())
+        return lock.acquire(blocking)
+
+    def release(self):
+        self.client.delete(self.rpath)
+        lock = self.locks[self.path]
+        lock.release()
+
+    def __enter__(self):
+        self.acquire()
+
+    def __exit__(self, *a):
+        self.release()
+
+def lock(self, *a):
+    return Lock(self, *a)
+
+zc.zk.testing.Client.Lock = lock
 
 def setUp(test, initial_tree=initial_tree):
     zope.testing.setupstack.setUpDirectory(test)

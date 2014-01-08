@@ -1029,20 +1029,13 @@ Deregistration (ephemeral host nodes)
 When the agent closes, it's host node goes away:
 
     >>> zk.print_tree()
-    /ZktoolsLocks
-      string_value = 'zktools ZLock dir'
+    /agent-locks
       /cust,someapp,acrank
-        string_value = 'lock'
       /cust,someapp,cache
-        string_value = 'lock'
       /cust,someapp,cms
-        string_value = 'lock'
       /cust2,someapp,cache
-        string_value = 'lock'
       /cust2,someapp,cms
-        string_value = 'lock'
       /cust2,someapp,monitor
-        string_value = 'lock'
     /cust
       /someapp
         /cache : squid
@@ -1466,7 +1459,8 @@ a 'unmanaging' event.
 
 It also shuts down the agent:
 
-    >>> agent.zk.handle
+    >>> agent.zk.client.state
+    'LOST'
 
 Once the monitor exists, you can start its periodic sending of zim events with
 the `run` method.  `run` will first send a `managing` announcement, followed by
@@ -1495,7 +1489,8 @@ send_state call:
     ANNOUNCE: unmanaging
     {"interval": 300, "uris": ["/zkdeploy/agent"]}
 
-    >>> agent.zk.handle
+    >>> agent.zk.client.state
+    'LOST'
 
 The monitor successfully unregistered itself.
 
@@ -1705,7 +1700,7 @@ You can specify subtypes::
 
     >>> zk.import_tree(tree, trim=True)
 
-This causes a -r option to be passed to the zookeeper-deeploy script.
+This causes a -r option to be passed to the zookeeper-deploy script.
 
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================

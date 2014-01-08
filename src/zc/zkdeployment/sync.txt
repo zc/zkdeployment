@@ -77,10 +77,6 @@ If there isn't a /hosts node, it will create one and sync the tree:
 And the tree is updated:
 
     >>> zk.print_tree()
-    /ZktoolsLocks
-      string_value = 'zktools ZLock dir'
-      /,hosts
-        string_value = 'lock'
     /bar
       /bar
       /ham
@@ -89,6 +85,7 @@ And the tree is updated:
       /bar
     /hosts
       version = 124
+    /hosts-lock
 
 When it runs again, and there isn't a change, then it won't do
 anything:
@@ -118,10 +115,6 @@ We'll also make sure that svn us used for file urls:
 And the tree is updated:
 
     >>> zk.print_tree()
-    /ZktoolsLocks
-      string_value = 'zktools ZLock dir'
-      /,hosts
-        string_value = 'lock'
     /bar
       /bar
     /extra_thing_that_should_be_ignored
@@ -129,6 +122,7 @@ And the tree is updated:
       /bar
     /hosts
       version = 125
+    /hosts-lock
 
 If we try to run it again, nothing will happen, since the ZK version now
 matches the VCS version.
@@ -176,6 +170,7 @@ of which is still out of date::
        version = 126
      /1.2.3.5
        version = 125
+   /hosts-lock
 
 .. -> tree
 
@@ -218,9 +213,7 @@ an error::
 We'll steal the lock and try to do the sync now:
 
     >>> svn_info = svn_info.replace('126', '127')
-    >>> import zktools.locking
-    >>> cluster_lock = zktools.locking.ZkLock(zk, ',hosts')
-    >>> with zktools.locking.ZkLock(zk, ',hosts'):
+    >>> with zk.client.Lock('/hosts-lock', 'test'):
     ...     zc.zkdeployment.sync.sync_with_canonical(svn_url, dry_run=False)
     INFO VCS Version: 127
     INFO ZK Version: 126
@@ -244,7 +237,7 @@ Another way to force a sync is by setting the cluster version to False::
      /1.2.3.4
        version = 126
      /1.2.3.5
-       version = 125
+       version = 12
 
 .. -> tree
 
@@ -289,11 +282,7 @@ After importing files ending in .zk, it imports files enfing in .zkx.
     INFO Importing bar.zk
     INFO Importing foo.zkx
 
-    >>> zk.print_tree()
-    /ZktoolsLocks
-      string_value = 'zktools ZLock dir'
-      /,hosts
-        string_value = 'lock'
+    >>> zk.print_tree() # doctest: +ELLIPSIS
     /bar
       /bar
     /extra_thing_that_should_be_ignored
@@ -306,6 +295,9 @@ After importing files ending in .zk, it imports files enfing in .zkx.
         version = 127
       /1.2.3.5
         version = 127
+    /hosts-lock
+      /...
+        string_value = '...'
 
 .. cleanup:
 

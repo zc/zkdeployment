@@ -1,18 +1,13 @@
+import kazoo.exceptions
 import logging
 import optparse
 import os
 import zc.zk
 import zc.zkdeployment
-import zktools.locking
-import zookeeper
 
 ZK_LOCATION = 'zookeeper:2181'
 
 logger = logging.getLogger(__name__)
-
-# Hack, zktools.locking calls zookeeper.set_log_stream, which messes up zk.
-zookeeper.set_log_stream = lambda f: None
-
 
 def svn_cmd(cmd, url): # This exists to be mocked
     return zc.zkdeployment.run_command(['svn', cmd, url], return_output=True)
@@ -76,7 +71,7 @@ class GIT:
 def get_zk_version(zk):
     try:
         return zk.get_properties('/hosts')['version']
-    except zookeeper.NoNodeException:
+    except kazoo.exceptions.NoNodeException:
         zk.import_tree('/hosts\n  version="initial"')
         return "initial"
 
@@ -106,9 +101,9 @@ def sync_with_canonical(url, dry_run=False, force=False, tree_directory=None):
                             child, host_version, zk_version))
                     return
 
-        cluster_lock = zktools.locking.ZkLock(zk, ',hosts')
-        try:
-            if cluster_lock.acquire(0):
+        cluster_lock = zk.client.Lock('/hosts-lock', str(os.getpid()))
+        if cluster_lock.acquire(0):
+            try:
                 logger.info("Version mismatch detected, resyncing")
 
                 # Import changes
@@ -122,12 +117,13 @@ def sync_with_canonical(url, dry_run=False, force=False, tree_directory=None):
                 # bump version number
                 if not dry_run:
                     zk.properties('/hosts').update(version=vcs.version)
-            else:
-                logger.error("Refused to update zookeeper tree, "
-                    "couldn't obtain cluster lock")
-        finally:
-            cluster_lock.release()
+            finally:
+                cluster_lock.release()
+        else:
+            logger.error("Refused to update zookeeper tree, "
+                         "couldn't obtain cluster lock")
 
+    zk.close()
 
 def main():
     logging.basicConfig(level=logging.WARNING)
