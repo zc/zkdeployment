@@ -531,7 +531,8 @@ Switched to zc.zk 2 and to using kazoo for locking.
 - This should make ZooKeeper communication more reliable.
 
 - Lock attempts now show who's requesting them and who has the
-  cuurent lock.
+  current lock.
+
 
 0.13.1 (2013-12-02)
 -------------------
