@@ -523,7 +523,7 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
-0.14.1 (2014-01-08)
+0.14.0 (2014-01-08)
 -------------------
 
 Switched to zc.zk 2 and to using kazoo for locking.
