@@ -7,6 +7,9 @@ import zc.thread
 
 logger = logging.getLogger(__name__)
 
+import kazoofilter
+logging.getLogger('kazoo.client').addFilter(kazoofilter.Filter())
+
 def run_command(cmd_list, verbose=False, return_output=False):
     logger.info("%s", " ".join(cmd_list))
     if return_output or not verbose:
