@@ -525,6 +525,14 @@ Changes
 
 Fixed: Logs were excessively chatty (thanks to Kazoo)
 
+0.14.3 (2014-01-13)
+-------------------
+
+Fixed: When syncing, bad (mostly random, but sometimes worse) data
+       was appearing in nodes that should not have had any.
+
+       See: https://pypi.python.org/pypi/zc.zk/2.0.0a4#a4-2014-01-13
+
 0.14.2 (2014-01-08)
 -------------------
 
