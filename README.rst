@@ -523,6 +523,8 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+Fixed: Logs were excessively chatty (thanks to Kazoo)
+
 0.14.3 (2014-01-13)
 -------------------
 

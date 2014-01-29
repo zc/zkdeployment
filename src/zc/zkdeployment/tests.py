@@ -962,6 +962,7 @@ def test_suite():
             checker=checker, setUp=setUp,
             tearDown=zope.testing.setupstack.tearDown,
             ))
+    suite.addTest(doctest.DocTestSuite('zc.zkdeployment.kazoofilter'))
 
     return suite
 
