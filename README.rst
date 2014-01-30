@@ -523,6 +523,11 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.14.4 (2014-01-30)
+-------------------
+
+- Better logging of session recovery (by way of a newer zc.zk).
+
 Fixed: Logs were excessively chatty (thanks to Kazoo)
 
 0.14.3 (2014-01-13)
