@@ -148,11 +148,10 @@ def main():
     parser.add_option('-t', '--tree-directory', default=None,
                       help="Working directiry for git repository")
     (options, args) = parser.parse_args()
-    has_lock = False
-    while not has_lock:
+    while True:
         try:
             lock = zc.lockfile.LockFile("/var/tmp/zkdeployment_vcs_lock_")
-            has_lock = True
+            break
         except LockError:
             time.sleep(3)
     try:
