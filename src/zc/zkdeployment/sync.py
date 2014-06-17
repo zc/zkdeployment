@@ -2,9 +2,12 @@ import kazoo.exceptions
 import logging
 import optparse
 import os
+import time
+import zc.lockfile
 import zc.zk
 import zc.zkdeployment
 
+MAX_VCS_RETRIES = 3
 ZK_LOCATION = 'zookeeper:2181'
 
 logger = logging.getLogger(__name__)
@@ -83,10 +86,19 @@ def sync_with_canonical(url, dry_run=False, force=False, tree_directory=None):
         if not force:
             return
 
-    if url.startswith('svn') or url.startswith('file://'):
-        vcs = SVN(url)
-    else:
-        vcs = GIT(url, tree_directory)
+    retries = 0
+    while True:
+        try:
+            if url.startswith('svn') or url.startswith('file://'):
+                vcs = SVN(url)
+            else:
+                vcs = GIT(url, tree_directory)
+            break
+        except RuntimeError:
+            retries += 1
+            if retries > MAX_VCS_RETRIES:
+                raise
+
 
     logger.info("VCS Version: " + str(vcs.version))
     logger.info("ZK Version: " + str(zk_version))
@@ -136,8 +148,18 @@ def main():
     parser.add_option('-t', '--tree-directory', default=None,
                       help="Working directiry for git repository")
     (options, args) = parser.parse_args()
-    sync_with_canonical(
-        options.url, options.dry_run, options.force, options.tree_directory)
+    has_lock = False
+    while not has_lock:
+        try:
+            lock = zc.lockfile.LockFile(os.path.join(options.tree_directory, "_vcs_lock_"))
+            has_lock = True
+        except LockError:
+            time.sleep(3)
+    try:
+        sync_with_canonical(
+            options.url, options.dry_run, options.force, options.tree_directory)
+    finally:
+        lock.close()
 
 
 if __name__ == '__main__':
