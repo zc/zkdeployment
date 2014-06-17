@@ -151,7 +151,7 @@ def main():
     has_lock = False
     while not has_lock:
         try:
-            lock = zc.lockfile.LockFile(os.path.join(options.tree_directory, "_vcs_lock_"))
+            lock = zc.lockfile.LockFile("/var/tmp/zkdeployment_vcs_lock_"))
             has_lock = True
         except LockError:
             time.sleep(3)
