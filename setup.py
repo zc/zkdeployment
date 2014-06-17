@@ -45,6 +45,7 @@ setup(
     install_requires = [
         'setuptools',
         'simplejson',
+        'zc.lockfile',
         'zc.thread',
         'zc.zk',
         'zim.messaging',
