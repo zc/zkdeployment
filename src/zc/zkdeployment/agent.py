@@ -450,6 +450,11 @@ class Agent(object):
             '%s (%s)' % (self.host_name, self.host_identifier),
             )
 
+    def run_role_script(self, name, *args):
+        if self.role_controller:
+            path = '/opt/%s/bin/%s' % (self.role, name)
+            self.run_command(path, ZK_LOCATION, '/roles' + self.role, *args)
+
     def deploy(self):
         try:
             cluster_version = self.cluster_version
@@ -540,6 +545,7 @@ class Agent(object):
 
             # Now update/install the needed deployments
             with self.role_lock():
+                self.run_role_script('starting-deployments')
                 for deployment in sorted(deployments,
                                          key=lambda d: (d.path, d.n)):
                     with self.node_lock(deployment.path):
@@ -558,7 +564,11 @@ class Agent(object):
                             # before releasng the lock, and we do it later
                             # as well to handle other failures.
                             self.hosts_properties.update(version=None)
+                            self.run_role_script(
+                                'ending-deployments',
+                                deployment.path, str(deployment.n))
                             raise
+                self.run_role_script('ending-deployments')
 
             # Uninstall software we don't have any more:
             for rpm_name in sorted(
