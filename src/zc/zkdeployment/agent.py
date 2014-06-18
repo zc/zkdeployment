@@ -452,8 +452,10 @@ class Agent(object):
 
     def run_role_script(self, name, *args):
         if self.role_controller:
-            path = '/opt/%s/bin/%s' % (self.role, name)
-            self.run_command(path, ZK_LOCATION, '/roles' + self.role, *args)
+            path = '/opt/%s/bin/%s' % (self.role_controller, name)
+            # It's tempting to request that output be returned, just so
+            # it can show up in the log.
+            self.run_command(path, ZK_LOCATION, '/roles/' + self.role, *args)
 
     def deploy(self):
         try:

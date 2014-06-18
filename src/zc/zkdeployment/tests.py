@@ -43,6 +43,8 @@ import zope.testing.renormalizing
 
 start_with_digit = re.compile('\d').match
 stage_build_path = re.compile('(/opt/\w+/stage-build)$').search
+role_controller_script = re.compile(r'/opt/\w+-(\d+)-(\d+)-rc/bin/'
+                                    r'(start|end)ing-deployments$').search
 
 class TestRecipe:
 
@@ -230,11 +232,29 @@ def subprocess_popen(args, stdout=None, stderr=None):
                     or
                     (command == 'downgrade' and version <= oldv)
                     ):
+                    if package.endswith('-rc'):
+                        _, src, erc, _ = package.rsplit('-', 3)
+                        bin = {
+                            'starting-deployments': (
+                                ('#!/bin/sh\n'
+                                 'echo "Starting deployments using %s"\n'
+                                 'exit %s\n'
+                                 % (package, src)), 0o554),
+                            'ending-deployments': (
+                                ('#!/bin/sh\n'
+                                 'echo "Ending deployments using %s"\n'
+                                 'exit %s\n'
+                                 % (package, src)), 0o554),
+                            }
+                    else:
+                        bin = {
+                            'zookeeper-deploy': '',
+                            }
                     buildfs(
                         dict(
                             opt={
                                 package: dict(
-                                    bin={'zookeeper-deploy': ''},
+                                    bin=bin,
                                     version=version+'-1',
                                     )},
                             ))
@@ -304,6 +324,17 @@ def subprocess_popen(args, stdout=None, stderr=None):
         elif stage_build_path(command) and not args:
             assert_(os.getcwd() == os.path.dirname(command))
             print stage_build_path(command).group(1)
+
+        elif role_controller_script(command):
+            print command, ' '.join(args)
+            m = role_controller_script(command)
+            if m.group(3) == "start":
+                rc = int(m.group(1))
+            else:
+                rc = int(m.group(2))
+            if rc:
+                raise ValueError("Subprocess exited with code %s" % rc)
+
         else:
             raise ValueError("No such command %s %r" % (command, args))
     except:
@@ -850,6 +881,203 @@ def test_downgrade():
     >>> zk.close()
     """
 
+def test_role_controller_at_initial_install():
+    """
+    >>> setup_logging()
+    >>> setup_role('my.role')
+
+    >>> import zc.zk
+    >>> zk = zc.zk.ZK('zookeeper:2181')
+    >>> zk.import_tree('''
+    ... /roles
+    ...   /my.role : my-0-0-rc
+    ...      version = '1.0.0'
+    ... /cust
+    ...   /cms : z4m
+    ...      version = u'0.9.0'
+    ...      /deploy
+    ...        /my.role
+    ... /cust2
+    ... ''', trim=True)
+
+    >>> agent = zc.zkdeployment.agent.Agent()
+    INFO Agent starting, cluster 1, host 1
+
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=2); time.sleep(.1)
+    ...     # doctest: +ELLIPSIS
+    INFO ============================================================
+    INFO Deploying version 2
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install my-0-0-rc-1.0.0
+    yum -y install my-0-0-rc-1.0.0
+    INFO yum -q list installed my-0-0-rc
+    yum -q list installed my-0-0-rc
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO /opt/z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO DEBUG: update software
+    INFO yum -y install z4m-0.9.0
+    yum -y install z4m-0.9.0
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO yum -y downgrade z4m-0.9.0
+    yum -y downgrade z4m-0.9.0
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    INFO yum -y remove z4mmonitor
+    yum -y remove z4mmonitor
+    INFO Done deploying version 2
+
+    >>> agent.close()
+    >>> zk.close()
+    """
+
+def test_role_controller_installation():
+    """
+    >>> setup_logging()
+    >>> setup_role('my.role')
+
+    Let's start with a traditional installation (no role-controller):
+
+    >>> import zc.zk
+    >>> zk = zc.zk.ZK('zookeeper:2181')
+    >>> zk.import_tree('''
+    ... /cust
+    ...   /cms : z4m
+    ...      version = u'0.9.0'
+    ...      /deploy
+    ...        /my.role
+    ... /cust2
+    ... ''', trim=True)
+
+    >>> agent = zc.zkdeployment.agent.Agent()
+    INFO Agent starting, cluster 1, host 1
+
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=2); time.sleep(.5)
+    INFO ============================================================
+    INFO Deploying version 2
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO /opt/z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install z4m-0.9.0
+    yum -y install z4m-0.9.0
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO yum -y downgrade z4m-0.9.0
+    yum -y downgrade z4m-0.9.0
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO yum -y remove z4mmonitor
+    yum -y remove z4mmonitor
+    INFO Done deploying version 2
+
+    If we add a role-controller, it will be installed:
+
+    >>> zk.import_tree('''
+    ... /roles
+    ...   /my.role : my-0-0-rc
+    ...      version = '1.0.0'
+    ... /cust
+    ...   /cms : z4m
+    ...      version = u'0.9.0'
+    ...      /deploy
+    ...        /my.role
+    ... ''', trim=True)
+
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=3); time.sleep(.5)
+    INFO ============================================================
+    INFO Deploying version 3
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install my-0-0-rc-1.0.0
+    yum -y install my-0-0-rc-1.0.0
+    INFO yum -q list installed my-0-0-rc
+    yum -q list installed my-0-0-rc
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    INFO /tmp/tmpcwTGRH/TEST_ROOT/opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    INFO Done deploying version 3
+
+If we change the 
+
+    >>> zk.import_tree('''
+    ... /roles
+    ...   /my.role : my-0-0-rc
+    ...      version = '1.0.1'
+    ... /cust
+    ...   /cms : z4m
+    ...      version = u'0.9.0'
+    ...      /deploy
+    ...        /my.role
+    ... ''', trim=True)
+
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=4); time.sleep(.5)
+    INFO ============================================================
+    INFO Deploying version 4
+    INFO yum -q list installed my-0-0-rc
+    yum -q list installed my-0-0-rc
+    INFO yum -y remove my-0-0-rc
+    yum -y remove my-0-0-rc
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install my-0-0-rc-1.0.1
+    yum -y install my-0-0-rc-1.0.1
+    INFO yum -q list installed my-0-0-rc
+    yum -q list installed my-0-0-rc
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    INFO /tmp/tmpcwTGRH/TEST_ROOT/opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    INFO Done deploying version 4
+
+    >>> agent.close()
+    >>> zk.close()
+    """
+
 class TestStream:
 
     def write(self, text):
@@ -903,6 +1131,18 @@ def setUp(test, initial_tree=initial_tree):
         test, lambda : zc.zk.testing.tearDown(test))
     buildfs(initial_file_system)
 
+    role_path = os.path.join(os.environ['TEST_ROOT'],
+                             zc.zkdeployment.agent.ROLE_LOCATION)
+
+    def setup_role(role):
+        with open(role_path, 'w') as f:
+            f.write(role)
+
+    def clear_role():
+        if os.path.exists(role_path):
+            os.unlink(role_path)
+
+    zope.testing.setupstack.register(test, clear_role)
     zope.testing.setupstack.context_manager(
         test, mock.patch('socket.getfqdn')
         ).return_value = 'host42'
@@ -918,6 +1158,7 @@ def setUp(test, initial_tree=initial_tree):
     handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
     logger.setLevel(logging.INFO)
     test.globs['setup_logging'] = lambda : logger.setLevel(logging.INFO)
+    test.globs['setup_role'] = setup_role
 
     zope.testing.setupstack.register(
         test,
