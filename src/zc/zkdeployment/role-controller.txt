@@ -217,7 +217,6 @@ node-oriented deployment strategy:
     INFO Done deploying version 7
 
 
-
 Handling errors in the role-controller installation
 ---------------------------------------------------
 

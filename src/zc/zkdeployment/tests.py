@@ -235,16 +235,8 @@ def subprocess_popen(args, stdout=None, stderr=None):
                     if package.endswith('-rc'):
                         _, src, erc, _ = package.rsplit('-', 3)
                         bin = {
-                            'starting-deployments': (
-                                ('#!/bin/sh\n'
-                                 'echo "Starting deployments using %s"\n'
-                                 'exit %s\n'
-                                 % (package, src)), 0o554),
-                            'ending-deployments': (
-                                ('#!/bin/sh\n'
-                                 'echo "Ending deployments using %s"\n'
-                                 'exit %s\n'
-                                 % (package, src)), 0o554),
+                            'starting-deployments': '',
+                            'ending-deployments': '',
                             }
                     else:
                         bin = {
@@ -343,7 +335,6 @@ def subprocess_popen(args, stdout=None, stderr=None):
         return FakeSubprocess(returncode=1)
     else:
         return FakeSubprocess(returncode=0)
-
 
 info_template = """Path: .
 URL: %s
