@@ -333,7 +333,8 @@ def subprocess_popen(args, stdout=None, stderr=None):
             else:
                 rc = int(m.group(2))
             if rc:
-                raise ValueError("Subprocess exited with code %s" % rc)
+                print "Busted!"
+            return FakeSubprocess(returncode=rc)
 
         else:
             raise ValueError("No such command %s %r" % (command, args))

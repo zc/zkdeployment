@@ -64,7 +64,7 @@ and managed by the deployment agent.
     yum -q list installed z4m
     INFO /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
     /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
-    INFO /tmp/tmpcwTGRH/TEST_ROOT/opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/cms 0
     z4m/bin/zookeeper-deploy /cust/cms 0
     INFO /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
     /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
@@ -104,7 +104,7 @@ updated before any deployments are performed:
     yum -q list installed z4m
     INFO /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
     /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
-    INFO /tmp/tmpcwTGRH/TEST_ROOT/opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/cms 0
     z4m/bin/zookeeper-deploy /cust/cms 0
     INFO /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
     /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
@@ -143,7 +143,7 @@ Downgrading the role controller works as expected:
     yum -q list installed z4m
     INFO /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
     /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
-    INFO /tmp/tmpcwTGRH/TEST_ROOT/opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/cms 0
     z4m/bin/zookeeper-deploy /cust/cms 0
     INFO /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
     /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
@@ -182,7 +182,7 @@ Switching to a different controller entirely also works:
     yum -q list installed z4m
     INFO /opt/your-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
     /opt/your-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
-    INFO /tmp/tmpcwTGRH/TEST_ROOT/opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/cms 0
     z4m/bin/zookeeper-deploy /cust/cms 0
     INFO /opt/your-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
     /opt/your-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
@@ -212,7 +212,7 @@ node-oriented deployment strategy:
     INFO DEBUG: update software
     INFO yum -q list installed z4m
     yum -q list installed z4m
-    INFO /tmp/tmpcwTGRH/TEST_ROOT/opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/cms 0
     z4m/bin/zookeeper-deploy /cust/cms 0
     INFO Done deploying version 7
 
@@ -254,6 +254,182 @@ deployments:
       version = None
       /424242424242
         error = u'Failed to install my-0-0-rc-666 (installed: None)'
+        name = u'host42'
+        role = u'my.role'
+        version = 7
+
+
+Interacting with the role controller
+------------------------------------
+
+As we see above, the role controller scripts are invoked before and
+after deployments are updated.  The role scripts can fail in their
+tasks; these failures cause cluster deployment to stop.
+
+Failure can occur for the ``starting-deployments`` script:
+
+    >>> zk.import_tree('''
+    ... /roles
+    ...   /my.role : my-1-0-rc
+    ...      version = '1.0.0'
+    ... /cust
+    ...   /cms : z4m-5.79.5
+    ...      /deploy
+    ...        /my.role
+    ... ''', trim=True)
+
+    >>> zk.properties('/hosts').update(version=9); time.sleep(.5)
+    INFO ============================================================
+    INFO Deploying version 9
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install my-1-0-rc-1.0.0
+    yum -y install my-1-0-rc-1.0.0
+    INFO yum -q list installed my-1-0-rc
+    yum -q list installed my-1-0-rc
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO yum -y install z4m-5.79.5
+    yum -y install z4m-5.79.5
+    INFO yum -q list installed z4m-5.79.5
+    yum -q list installed z4m-5.79.5
+    INFO /opt/my-1-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    /opt/my-1-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    Busted!
+    ERROR FAILURE
+    ERROR deploying
+    Traceback (most recent call last):
+      ...
+    RuntimeError: Command failed:
+      /opt/my-1-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    CRITICAL FAILED deploying version 9
+
+    >>> zk.print_tree('/hosts')
+    /hosts
+      version = None
+      /424242424242
+        error = u'Command failed: /opt/my-1-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role'
+        name = u'host42'
+        role = u'my.role'
+        version = 7
+
+Failure can occur for the ``ending-deployments`` script:
+
+    >>> zk.import_tree('''
+    ... /roles
+    ...   /my.role : my-0-1-rc
+    ...      version = '1.0.0'
+    ... /cust
+    ...   /cms : z4m-5.79.5
+    ...      /deploy
+    ...        /my.role
+    ... ''', trim=True)
+
+    >>> zk.properties('/hosts').update(version=10); time.sleep(.5)
+    INFO ============================================================
+    INFO Deploying version 10
+    INFO yum -q list installed my-1-0-rc
+    yum -q list installed my-1-0-rc
+    INFO yum -y remove my-1-0-rc
+    yum -y remove my-1-0-rc
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install my-0-1-rc-1.0.0
+    yum -y install my-0-1-rc-1.0.0
+    INFO yum -q list installed my-0-1-rc
+    yum -q list installed my-0-1-rc
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO yum -q list installed z4m-5.79.5
+    yum -q list installed z4m-5.79.5
+    INFO /opt/my-0-1-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    /opt/my-0-1-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    INFO /opt/z4m-5.79.5/bin/zookeeper-deploy /cust/cms 0
+    z4m-5.79.5/bin/zookeeper-deploy /cust/cms 0
+    INFO /opt/my-0-1-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    /opt/my-0-1-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    Busted!
+    ERROR FAILURE
+    ERROR deploying
+    Traceback (most recent call last):
+      ...
+    RuntimeError: Command failed:
+      /opt/my-0-1-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    CRITICAL FAILED deploying version 10
+
+    >>> zk.print_tree('/hosts')
+    /hosts
+      version = None
+      /424242424242
+        error = u'Command failed: /opt/my-0-1-rc/bin/ending-deployments zookeeper:2181 /roles/my.role'
+        name = u'host42'
+        role = u'my.role'
+        version = 7
+
+If there's a failure during the deployment of applications onto the
+host, the ``ending-deployments`` script is invoked with the node and
+index for the failed deployment.  We'll install an app with a
+mis-behaving ``zookeeper-deploy`` script to see this in action:
+
+    >>> zk.import_tree('''
+    ... /roles
+    ...   /my.role : my-0-0-rc
+    ...      version = '1.0.0'
+    ... /cust
+    ...   /cms : z4m-5.79.5
+    ...      /deploy
+    ...        /my.role
+    ...   /upset-and : cranky
+    ...      version = '0.2.4'
+    ...      /deploy
+    ...        /my.role
+    ... ''', trim=True)
+
+    >>> zk.properties('/hosts').update(version=11); time.sleep(.5)
+    INFO ============================================================
+    INFO Deploying version 11
+    INFO yum -q list installed my-0-1-rc
+    yum -q list installed my-0-1-rc
+    INFO yum -y remove my-0-1-rc
+    yum -y remove my-0-1-rc
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install my-0-0-rc-1.0.0
+    yum -y install my-0-0-rc-1.0.0
+    INFO yum -q list installed my-0-0-rc
+    yum -q list installed my-0-0-rc
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO yum -y install cranky-0.2.4
+    yum -y install cranky-0.2.4
+    INFO yum -q list installed cranky
+    yum -q list installed cranky
+    INFO yum -q list installed z4m-5.79.5
+    yum -q list installed z4m-5.79.5
+    INFO /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    INFO /opt/z4m-5.79.5/bin/zookeeper-deploy /cust/cms 0
+    z4m-5.79.5/bin/zookeeper-deploy /cust/cms 0
+    INFO /opt/cranky/bin/zookeeper-deploy /cust/upset-and 0
+    cranky/bin/zookeeper-deploy /cust/upset-and 0
+    waaaaaaaaaaaa
+    ERROR FAILURE
+    INFO /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role /cust/upset-and 0
+    /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role /cust/upset-and 0
+    ERROR deploying
+    Traceback (most recent call last):
+      ...
+    RuntimeError: Command failed: /opt/cranky/bin/zookeeper-deploy /cust/upset-and 0
+    CRITICAL FAILED deploying version 11
+
+    >>> zk.print_tree('/hosts')
+    /hosts
+      version = None
+      /424242424242
+        error = u'Command failed: /opt/cranky/bin/zookeeper-deploy /cust/upset-and 0'
         name = u'host42'
         role = u'my.role'
         version = 7
