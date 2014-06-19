@@ -240,6 +240,7 @@ class Agent(object):
                         path, int(n))
 
     def get_role_controller(self):
+        """Return the configured role controller."""
         if not self.role:
             return None, None
         try:
@@ -255,6 +256,7 @@ class Agent(object):
         return self._get_installed('bin', 'zookeeper-deploy')
 
     def get_installed_role_controller(self):
+        """Return RPM name for an installed role controller, or None."""
         rcs = self._get_installed('bin', 'starting-deployments')
         if rcs:
             return list(rcs)[0]
@@ -346,6 +348,7 @@ class Agent(object):
         return zc.zkdeployment.run_command(args, verbose=self.verbose, **kw)
 
     def run_yum(self, *args, **kw):
+        """Run yum, ensuring 'clean' is invoked before an 'install'."""
         subcmd = [a for a in args if a[0] != '-'][0]
         if subcmd == 'install' and not self.clean:
             self.run_command('yum', '-y', 'clean', 'all')
@@ -353,6 +356,7 @@ class Agent(object):
         return self.run_command('yum', *args, **kw)
 
     def install_something(self, rpm_package_name, version):
+        """Install a software package from yum or version control.."""
         rpm_version = self.get_rpm_version(rpm_package_name)
         if rpm_version != version:
             # Note that we always get here for VCS installs,
@@ -417,6 +421,7 @@ class Agent(object):
                         (rpm_name, rpm_version))
 
     def update_role_controller(self):
+        """Make sure the installed role controller matches configuration."""
         desired = self.get_role_controller()
         installed = self.get_installed_role_controller()
         if installed:
@@ -434,7 +439,7 @@ class Agent(object):
 
     def node_lock(self, path):
         if self.role_controller:
-            return DummyLock()
+            return dummy_lock()
         else:
             return self._lock('/agent-locks/'+ path2name(path))
 
@@ -442,7 +447,7 @@ class Agent(object):
         if self.role_controller:
             return self._lock('/roles/%s/lock' % self.role)
         else:
-            return DummyLock()
+            return dummy_lock()
 
     def _lock(self, path):
         return self.zk.client.Lock(
@@ -451,6 +456,7 @@ class Agent(object):
             )
 
     def run_role_script(self, name, *args):
+        """Run a role controller script, if we have a controller."""
         if self.role_controller:
             path = '/opt/%s/bin/%s' % (self.role_controller, name)
             # It's tempting to request that output be returned, just so
@@ -618,7 +624,7 @@ class Agent(object):
 
 
 @contextlib.contextmanager
-def DummyLock():
+def dummy_lock():
     yield
 
 
