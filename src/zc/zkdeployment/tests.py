@@ -1034,7 +1034,8 @@ def test_role_controller_installation():
     /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
     INFO Done deploying version 3
 
-If we change the 
+    If we update to a newer version of the role controller, that will be
+    updated before any deployments are performed:
 
     >>> zk.import_tree('''
     ... /roles
@@ -1073,6 +1074,115 @@ If we change the
     INFO /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
     /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
     INFO Done deploying version 4
+
+    Downgrading the role controller works as expected:
+
+    >>> zk.import_tree('''
+    ... /roles
+    ...   /my.role : my-0-0-rc
+    ...      version = '1.0.0'
+    ... /cust
+    ...   /cms : z4m
+    ...      version = u'0.9.0'
+    ...      /deploy
+    ...        /my.role
+    ... ''', trim=True)
+
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=5); time.sleep(.5)
+    INFO ============================================================
+    INFO Deploying version 5
+    INFO yum -q list installed my-0-0-rc
+    yum -q list installed my-0-0-rc
+    INFO yum -y remove my-0-0-rc
+    yum -y remove my-0-0-rc
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install my-0-0-rc-1.0.0
+    yum -y install my-0-0-rc-1.0.0
+    INFO yum -q list installed my-0-0-rc
+    yum -q list installed my-0-0-rc
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    INFO /tmp/tmpcwTGRH/TEST_ROOT/opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    INFO Done deploying version 5
+
+    Switching to a different controller entirely also works:
+
+    >>> zk.import_tree('''
+    ... /roles
+    ...   /my.role : your-0-0-rc
+    ...      version = '1.0.0'
+    ... /cust
+    ...   /cms : z4m
+    ...      version = u'0.9.0'
+    ...      /deploy
+    ...        /my.role
+    ... ''', trim=True)
+
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=6); time.sleep(.5)
+    INFO ============================================================
+    INFO Deploying version 6
+    INFO yum -q list installed my-0-0-rc
+    yum -q list installed my-0-0-rc
+    INFO yum -y remove my-0-0-rc
+    yum -y remove my-0-0-rc
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install your-0-0-rc-1.0.0
+    yum -y install your-0-0-rc-1.0.0
+    INFO yum -q list installed your-0-0-rc
+    yum -q list installed your-0-0-rc
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO /opt/your-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    /opt/your-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    INFO /tmp/tmpcwTGRH/TEST_ROOT/opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO /opt/your-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    /opt/your-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    INFO Done deploying version 6
+
+    We can even remove the role configuration to switch back to a
+    node-oriented deployment strategy:
+
+    >>> zk.import_tree('''
+    ... /roles
+    ... /cust
+    ...   /cms : z4m
+    ...      version = u'0.9.0'
+    ...      /deploy
+    ...        /my.role
+    ... ''', trim=True)
+
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=7); time.sleep(.5)
+    INFO ============================================================
+    INFO Deploying version 7
+    INFO yum -q list installed your-0-0-rc
+    yum -q list installed your-0-0-rc
+    INFO yum -y remove your-0-0-rc
+    yum -y remove your-0-0-rc
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO /tmp/tmpcwTGRH/TEST_ROOT/opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO Done deploying version 7
 
     >>> agent.close()
     >>> zk.close()
@@ -1206,5 +1316,3 @@ def test_suite():
     suite.addTest(doctest.DocTestSuite('zc.zkdeployment.kazoofilter'))
 
     return suite
-
-
