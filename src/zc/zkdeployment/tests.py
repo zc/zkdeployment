@@ -42,7 +42,7 @@ import zope.testing.setupstack
 import zope.testing.renormalizing
 
 start_with_digit = re.compile('\d').match
-stage_build_path = re.compile('(/opt/\w+/stage-build)$').search
+stage_build_path = re.compile('(/opt/[-\w]+/stage-build)$').search
 role_controller_script = re.compile(r'/opt/\w+-(\d+)-(\d+)-rc/bin/'
                                     r'(start|end)ing-deployments$').search
 
@@ -248,6 +248,7 @@ def subprocess_popen(args, stdout=None, stderr=None):
                                 package: dict(
                                     bin=bin,
                                     version=version+'-1',
+                                    **{'stage-build': ''}
                                     )},
                             ))
             elif command == 'remove':
@@ -275,35 +276,26 @@ def subprocess_popen(args, stdout=None, stderr=None):
 
         elif command == 'svn':
             if args[0] == 'co' and len(args) == 3:
-                bin_path = os.path.join(args[2], 'bin')
                 svn_path = os.path.join(args[2], '.svn')
                 url_path = os.path.join(args[2], 'url')
                 if os.path.exists(url_path):
                     with open(url_path) as f:
                         if f.read() != args[1]:
                             raise ValueError('bad svn url')
-                if not os.path.exists(bin_path):
-                    os.makedirs(bin_path)
                 if not os.path.exists(svn_path):
                     os.makedirs(svn_path)
-                with open(os.path.join(args[2], 'bin', 'zookeeper-deploy'),
-                          'w'):
-                    pass
                 with open(url_path, 'w') as f:
                     f.write(args[1])
+                checkout_software(args[2])
             if args[0] == 'info':
                 with open(os.path.join(args[1], 'url')) as f:
                     print >> stdout, info_template % f.read()
 
         elif command == 'git':
             if args[0] == 'clone' and len(args) == 3:
-                bin_path = os.path.join(args[2], 'bin')
                 git_path = os.path.join(args[2], '.git')
-                os.makedirs(bin_path)
                 os.makedirs(git_path)
-                with open(os.path.join(bin_path, 'zookeeper-deploy'),
-                          'w'):
-                    pass
+                checkout_software(args[2])
 
         elif command == 'chmod':
             if args != ['-R', 'a+rX', '.']:
@@ -335,6 +327,20 @@ def subprocess_popen(args, stdout=None, stderr=None):
         return FakeSubprocess(returncode=1)
     else:
         return FakeSubprocess(returncode=0)
+
+def checkout_software(path):
+    """Initialize software checkout aside from VCS-specific details."""
+    bin_path = os.path.join(path, 'bin')
+    def bin(name):
+        return os.path.join(bin_path, name)
+    if not os.path.exists(bin_path):
+        os.makedirs(bin_path)
+    if path.endswith("-rc"):
+        with open(bin('starting-deployments'), 'w'): pass
+        with open(bin('ending-deployments'), 'w'): pass
+    else:
+        with open(bin('zookeeper-deploy'), 'w'): pass
+    with open(os.path.join(path, 'stage-build'), 'w'): pass
 
 info_template = """Path: .
 URL: %s

@@ -89,8 +89,8 @@ updated before any deployments are performed:
     INFO Deploying version 4
     INFO yum -q list installed my-0-0-rc
     yum -q list installed my-0-0-rc
-    INFO yum -y remove my-0-0-rc
-    yum -y remove my-0-0-rc
+    INFO yum -q list installed my-0-0-rc
+    yum -q list installed my-0-0-rc
     INFO yum -y clean all
     yum -y clean all
     INFO yum -y install my-0-0-rc-1.0.1
@@ -128,12 +128,16 @@ Downgrading the role controller works as expected:
     INFO Deploying version 5
     INFO yum -q list installed my-0-0-rc
     yum -q list installed my-0-0-rc
-    INFO yum -y remove my-0-0-rc
-    yum -y remove my-0-0-rc
+    INFO yum -q list installed my-0-0-rc
+    yum -q list installed my-0-0-rc
     INFO yum -y clean all
     yum -y clean all
     INFO yum -y install my-0-0-rc-1.0.0
     yum -y install my-0-0-rc-1.0.0
+    INFO yum -q list installed my-0-0-rc
+    yum -q list installed my-0-0-rc
+    INFO yum -y downgrade my-0-0-rc-1.0.0
+    yum -y downgrade my-0-0-rc-1.0.0
     INFO yum -q list installed my-0-0-rc
     yum -q list installed my-0-0-rc
     INFO DEBUG: got deployments
@@ -188,6 +192,87 @@ Switching to a different controller entirely also works:
     /opt/your-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
     INFO Done deploying version 6
 
+Role controllers can be installed from version control like other software:
+
+    >>> zc.zkdeployment.agent.register()
+    >>> zk.import_tree('''
+    ... /roles
+    ...   /my.role : your-0-0-rc
+    ...      version = 'git:git@bitbucket.org:zc/your-rc.git#master'
+    ... /cust
+    ...   /cms : z4m
+    ...      version = u'0.9.0'
+    ...      /deploy
+    ...        /my.role
+    ... ''', trim=True)
+
+    >>> zk.properties('/hosts').update(version='7.1'); time.sleep(.5)
+    INFO ============================================================
+    INFO Deploying version 7.1
+    INFO yum -q list installed your-0-0-rc
+    yum -q list installed your-0-0-rc
+    INFO yum -q list installed your-0-0-rc
+    yum -q list installed your-0-0-rc
+    INFO yum -y remove your-0-0-rc
+    yum -y remove your-0-0-rc
+    INFO git clone t@bitbucket.org:zc/your-rc.git /opt/your-0-0-rc
+    INFO git checkout master
+    INFO Build your-0-0-rc (git:git@bitbucket.org:zc/your-rc.git#master)
+    INFO /opt/your-0-0-rc/stage-build
+    /opt/your-0-0-rc/stage-build
+    INFO chmod -R a+rX .
+    chmod -R a+rX .
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO /opt/your-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    /opt/your-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO /opt/your-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    /opt/your-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    INFO Done deploying version 7.1
+
+Changing the version control URI causes the installation to be replaced:
+
+    >>> zc.zkdeployment.agent.register()
+    >>> zk.import_tree('''
+    ... /roles
+    ...   /my.role : your-0-0-rc
+    ...      version = 'git:git@bitbucket.org:zc/your-rc.git#my-branch'
+    ... /cust
+    ...   /cms : z4m
+    ...      version = u'0.9.0'
+    ...      /deploy
+    ...        /my.role
+    ... ''', trim=True)
+
+    >>> zk.properties('/hosts').update(version='7.2'); time.sleep(.5)
+    INFO ============================================================
+    INFO Deploying version 7.2
+    INFO Removing conflicting checkout 'git:git@bitbucket.org:zc/your-rc.git#master' != u'git:git@bitbucket.org:zc/your-rc.git#my-branch'
+    INFO git clone t@bitbucket.org:zc/your-rc.git /opt/your-0-0-rc
+    INFO git checkout my-branch
+    INFO Build your-0-0-rc (git:git@bitbucket.org:zc/your-rc.git#my-branch)
+    INFO /opt/your-0-0-rc/stage-build
+    /opt/your-0-0-rc/stage-build
+    INFO chmod -R a+rX .
+    chmod -R a+rX .
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO /opt/your-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    /opt/your-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO /opt/your-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    /opt/your-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    INFO Done deploying version 7.2
+
 We can even remove the role configuration to switch back to a
 node-oriented deployment strategy:
 
@@ -203,10 +288,7 @@ node-oriented deployment strategy:
     >>> zk.properties('/hosts').update(version=7); time.sleep(.5)
     INFO ============================================================
     INFO Deploying version 7
-    INFO yum -q list installed your-0-0-rc
-    yum -q list installed your-0-0-rc
-    INFO yum -y remove your-0-0-rc
-    yum -y remove your-0-0-rc
+    INFO Removing checkout your-0-0-rc
     INFO DEBUG: got deployments
     INFO DEBUG: remove old deployments
     INFO DEBUG: update software

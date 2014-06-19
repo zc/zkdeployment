@@ -432,7 +432,12 @@ class Agent(object):
             self.role_controller = have[0]
             return
         if have[0]:
-            self.uninstall_something(have[0])
+            if desired[0] == have[0]:
+                # Update version selected
+                self.install_something(*desired)
+                self.role_controller = desired[0]
+                return
+            self.uninstall_something(installed)
         if desired[0]:
             self.install_something(*desired)
         self.role_controller = desired[0]
