@@ -259,6 +259,9 @@ class Agent(object):
         """Return RPM name for an installed role controller, or None."""
         rcs = self._get_installed('bin', 'starting-deployments')
         if rcs:
+            if len(rcs) > 1:
+                raise RuntimeError(
+                    "too many installed role controllers: %r" % rcs)
             return list(rcs)[0]
         else:
             return None
