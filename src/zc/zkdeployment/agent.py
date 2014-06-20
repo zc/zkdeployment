@@ -167,10 +167,9 @@ class Agent(object):
                     if (path.endswith('/deploy/' + self.host_identifier) or
                         path.endswith('/deploy/' + self.host_name)
                         ):
-                        if self.role:
-                            raise ValueError(
-                                'Found a host-based deployment at %s but '
-                                'the host has a role, %s.' % (path, self.role))
+                        raise ValueError(
+                            'Found a host-based deployment at %s but '
+                            'the host has a role, %s.' % (path, self.role))
                     continue
             else:
                 if not (path.endswith('/deploy/' + self.host_identifier) or
