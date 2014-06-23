@@ -152,7 +152,7 @@ def main():
         try:
             lock = zc.lockfile.LockFile("/var/tmp/zkdeployment_vcs_lock_")
             break
-        except LockError:
+        except zc.lockfile.LockError:
             time.sleep(3)
     try:
         sync_with_canonical(
