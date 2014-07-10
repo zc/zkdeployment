@@ -937,6 +937,7 @@ def test_role_controller_addition():
     ... /roles
     ...   /my.role : my-0-0-rc
     ...      version = '1.0.0'
+    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
@@ -1084,24 +1085,21 @@ def test_suite():
         (re.compile(r'INFO DEBUG: [^\n]+\n'), ''),
         (re.compile(r"u'/"), "'/"),
         ])
+    m = manuel.doctest.Manuel(
+        checker=checker,
+        optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE
+        ) + manuel.capture.Manuel()
     suite.addTest(
         manuel.testing.TestSuite(
-            manuel.doctest.Manuel(
-                checker=checker,
-                optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE
-                ) +
-            manuel.capture.Manuel(),
+            m,
             'agent.txt', 'git.txt',
             setUp=setUp,
             tearDown=zope.testing.setupstack.tearDown,
             ))
     suite.addTest(
         manuel.testing.TestSuite(
-            manuel.doctest.Manuel(
-                checker=checker,
-                optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE
-                ) +
-            manuel.capture.Manuel(),
+            m,
+            'persistent-lock.txt',
             'role-controller.txt',
             setUp=(lambda t: setUp(
                 t,
@@ -1111,11 +1109,7 @@ def test_suite():
             ))
     suite.addTest(
         manuel.testing.TestSuite(
-            manuel.doctest.Manuel(
-                checker=checker,
-                optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE
-                ) +
-            manuel.capture.Manuel(),
+            m,
             'sync.txt', 'syncgit.txt',
             setUp=setup_sync,
             tearDown=zope.testing.setupstack.tearDown,

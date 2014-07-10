@@ -1,0 +1,52 @@
+================
+Persistent locks
+================
+
+Using a role controller requires the use of a non-ephemeral lock,
+implemented by the ``PersistentLock`` class:
+
+    >>> from zc.zkdeployment.agent import PersistentLock
+
+The lock can be hosted by any ZooKeeper node without children not
+managed by the lock.
+
+Let's set up a simple tree with a non-root node to use as the lock node:
+
+    >>> import zc.zk
+
+    >>> zk = zc.zk.ZK("zookeeper:2181")
+
+    >>> lock_path = zk.create("/my-lock")
+    >>> lock_path
+    u'/my-lock'
+
+When there is only one requestor, the lock is pretty straightforward.
+An instance of the ``PersistentLock`` class is a context manager.  The
+constructor requires access to ZooKeeper, the path of the lock, and
+information about the host:
+
+    >>> lock = PersistentLock(zk, lock_path, "app.example.net", "i-1234")
+
+The last argument, the host_id, is used to identify this host among
+other requestors.  If this host already has a request for this lock,
+the host_id will be used to identify it and "adopt" the existing
+request, otherwise a new request will be created.
+
+When we enter the lock without any other requestors, we get the lock
+immediately.  We can see the request in ZooKeeper:
+
+    >>> lock.__enter__()
+    >>> zk.print_tree(lock_path)
+    /my-lock
+      /lr-0000000000
+        hostname = u'app.example.net'
+        requestor = u'i-1234'
+
+The hostname is recorded as a convenience for humans inspecting the
+tree, and is not used in the operation of the lock.
+
+When we exit the lock, the request is removed from ZooKeeper:
+
+    >>> lock.__exit__(None, None, None)
+    >>> zk.print_tree(lock_path)
+    /my-lock

@@ -14,6 +14,7 @@ import signal
 import simplejson
 import socket
 import sys
+import threading
 import time
 import zc.thread
 import zc.zk
@@ -448,19 +449,17 @@ class Agent(object):
         if self.role_controller:
             return dummy_lock()
         else:
-            return self._lock('/agent-locks/'+ path2name(path))
+            return self.zk.client.Lock(
+                '/agent-locks/'+ path2name(path),
+                '%s (%s)' % (self.host_name, self.host_identifier),
+                )
 
     def role_lock(self):
         if self.role_controller:
-            return self._lock('/roles/%s/lock' % self.role)
+            return PersistentLock(self.zk, '/roles/%s/lock' % self.role,
+                                  self.host_name, self.host_identifier)
         else:
             return dummy_lock()
-
-    def _lock(self, path):
-        return self.zk.client.Lock(
-            path,
-            '%s (%s)' % (self.host_name, self.host_identifier),
-            )
 
     def run_role_script(self, name, *args):
         """Run a role controller script, if we have a controller."""
@@ -633,6 +632,42 @@ class Agent(object):
 @contextlib.contextmanager
 def dummy_lock():
     yield
+
+
+class PersistentLock(object):
+
+    def __init__(self, zk, path, hostname, hostid):
+        self.zk = zk
+        self.path = path
+        self.semaphore = threading.Semaphore(0)
+        prefix = self.path + '/'
+        request = self.zk.create(
+            prefix + 'lr-',
+            value=json.dumps({'requestor': hostid,
+                              'hostname': hostname}),
+            sequence=True).rsplit('/', 1)[1]
+        children = self.zk.client.get_children(self.path)
+        for child in sorted(children):
+            properties = zk.properties(prefix + child)
+            if properties.get('requestor') == hostid:
+                if child != request:
+                    self.zk.delete(prefix + request)
+                request = child
+                break
+        self.request = request
+
+    def __enter__(self):
+        @self.zk.client.ChildrenWatch(self.path)
+        def watch(children):
+            children = sorted(children)
+            if children[:1] == [self.request]:
+                self.semaphore.release()
+                return False
+        self.semaphore.acquire()
+
+    def __exit__(self, *exc_info):
+        if exc_info == (None, None, None):
+            self.zk.delete(self.path + '/' + self.request)
 
 
 class Abandon(Exception):

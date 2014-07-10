@@ -36,6 +36,7 @@ and managed by the deployment agent.
     ... /roles
     ...   /my.role : my-0-0-rc
     ...      version = '1.0.0'
+    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
@@ -77,6 +78,7 @@ updated before any deployments are performed:
     ... /roles
     ...   /my.role : my-0-0-rc
     ...      version = '1.0.1'
+    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
@@ -116,6 +118,7 @@ Downgrading the role controller works as expected:
     ... /roles
     ...   /my.role : my-0-0-rc
     ...      version = '1.0.0'
+    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
@@ -159,6 +162,7 @@ Switching to a different controller entirely also works:
     ... /roles
     ...   /my.role : your-0-0-rc
     ...      version = '1.0.0'
+    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
@@ -199,6 +203,7 @@ Role controllers can be installed from version control like other software:
     ... /roles
     ...   /my.role : your-0-0-rc
     ...      version = 'git:git@bitbucket.org:zc/your-rc.git#master'
+    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
@@ -242,6 +247,7 @@ Changing the version control URI causes the installation to be replaced:
     ... /roles
     ...   /my.role : your-0-0-rc
     ...      version = 'git:git@bitbucket.org:zc/your-rc.git#my-branch'
+    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
@@ -272,6 +278,41 @@ Changing the version control URI causes the installation to be replaced:
     INFO /opt/your-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
     /opt/your-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
     INFO Done deploying version 7.2
+
+The role's ``lock`` node must exist; an error will triggered if it does
+not:
+
+    >>> zc.zkdeployment.agent.register()
+    >>> zk.import_tree('''
+    ... /roles
+    ...   /my.role : your-0-0-rc
+    ...      version = 'git:git@bitbucket.org:zc/your-rc.git#my-branch'
+    ... /cust
+    ...   /cms : z4m
+    ...      version = u'0.9.0'
+    ...      /deploy
+    ...        /my.role
+    ... ''', trim=True)
+
+    >>> zk.properties('/hosts').update(version='7.3'); time.sleep(.5)
+    INFO ============================================================
+    INFO Deploying version 7.3
+    INFO git pull origin -a
+    INFO Build your-0-0-rc (git:git@bitbucket.org:zc/your-rc.git#my-branch)
+    INFO /opt/your-0-0-rc/stage-build
+    /opt/your-0-0-rc/stage-build
+    INFO chmod -R a+rX .
+    chmod -R a+rX .
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    ERROR deploying
+    Traceback (most recent call last):
+      ...
+    NoNodeError: no node
+    CRITICAL FAILED deploying version 7.3
 
 We can even remove the role configuration to switch back to a
 node-oriented deployment strategy:
@@ -310,6 +351,7 @@ deployments:
     ... /roles
     ...   /my.role : my-0-0-rc
     ...      version = '666'
+    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
@@ -353,6 +395,7 @@ Failure can occur for the ``starting-deployments`` script:
     ... /roles
     ...   /my.role : my-1-0-rc
     ...      version = '1.0.0'
+    ...      /lock
     ... /cust
     ...   /cms : z4m-5.79.5
     ...      /deploy
@@ -401,6 +444,7 @@ Failure can occur for the ``ending-deployments`` script:
     ... /roles
     ...   /my.role : my-0-1-rc
     ...      version = '1.0.0'
+    ...      /lock
     ... /cust
     ...   /cms : z4m-5.79.5
     ...      /deploy
@@ -458,6 +502,7 @@ mis-behaving ``zookeeper-deploy`` script to see this in action:
     ... /roles
     ...   /my.role : my-0-0-rc
     ...      version = '1.0.0'
+    ...      /lock
     ... /cust
     ...   /cms : z4m-5.79.5
     ...      /deploy
