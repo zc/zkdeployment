@@ -645,7 +645,7 @@ class PersistentLock(object):
         self.path = path
         self.hostname = hostname
         self.hostid = hostid
-        self.semaphore = threading.Semaphore(0)
+        self.event = threading.Event()
 
     def __enter__(self):
         prefix = self.path + '/'
@@ -668,9 +668,9 @@ class PersistentLock(object):
         def watch(children):
             children = sorted(children)
             if children[:1] == [request]:
-                self.semaphore.release()
+                self.event.set()
                 return False
-        self.semaphore.acquire()
+        self.event.wait()
 
     def __exit__(self, *exc_info):
         if exc_info == (None, None, None):

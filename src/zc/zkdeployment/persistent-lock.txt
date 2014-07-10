@@ -38,7 +38,6 @@ verify that the lock node exists:
     >>> zk.print_tree(lock_path)
     /my-lock
 
-
     >>> PersistentLock(zk, "/not-there", "app.example.net", "i-1234")
     Traceback (most recent call last):
       ...
