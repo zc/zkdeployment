@@ -637,33 +637,37 @@ def dummy_lock():
 class PersistentLock(object):
 
     def __init__(self, zk, path, hostname, hostid):
-        self.zk = zk
-        self.path = path
-        self.semaphore = threading.Semaphore(0)
-        prefix = self.path + '/'
         try:
-            request = self.zk.create(
-                prefix + 'lr-',
-                value=json.dumps({'requestor': hostid,
-                                  'hostname': hostname}),
-                sequence=True).rsplit('/', 1)[1]
+            zk.get_children(path)
         except kazoo.exceptions.NoNodeError:
             raise RuntimeError("role lock node '%s' must exist" % path)
+        self.zk = zk
+        self.path = path
+        self.hostname = hostname
+        self.hostid = hostid
+        self.semaphore = threading.Semaphore(0)
+
+    def __enter__(self):
+        prefix = self.path + '/'
+        request = self.zk.create(
+            prefix + 'lr-',
+            value=json.dumps({'requestor': self.hostid,
+                              'hostname': self.hostname}),
+            sequence=True).rsplit('/', 1)[1]
         children = self.zk.client.get_children(self.path)
         for child in sorted(children):
-            properties = zk.properties(prefix + child)
-            if properties.get('requestor') == hostid:
+            properties = self.zk.properties(prefix + child)
+            if properties.get('requestor') == self.hostid:
                 if child != request:
                     self.zk.delete(prefix + request)
                 request = child
                 break
         self.request = request
 
-    def __enter__(self):
         @self.zk.client.ChildrenWatch(self.path)
         def watch(children):
             children = sorted(children)
-            if children[:1] == [self.request]:
+            if children[:1] == [request]:
                 self.semaphore.release()
                 return False
         self.semaphore.acquire()

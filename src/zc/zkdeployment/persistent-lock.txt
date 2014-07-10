@@ -32,6 +32,18 @@ other requestors.  If this host already has a request for this lock,
 the host_id will be used to identify it and "adopt" the existing
 request, otherwise a new request will be created.
 
+Creating the lock does not create the request for the lock, but does
+verify that the lock node exists:
+
+    >>> zk.print_tree(lock_path)
+    /my-lock
+
+
+    >>> PersistentLock(zk, "/not-there", "app.example.net", "i-1234")
+    Traceback (most recent call last):
+      ...
+    RuntimeError: role lock node '/not-there' must exist
+
 When we enter the lock without any other requestors, we get the lock
 immediately.  We can see the request in ZooKeeper:
 
