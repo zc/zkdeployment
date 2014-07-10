@@ -645,7 +645,6 @@ class PersistentLock(object):
         self.path = path
         self.hostname = hostname
         self.hostid = hostid
-        self.event = threading.Event()
 
     def __enter__(self):
         prefix = self.path + '/'
@@ -663,14 +662,15 @@ class PersistentLock(object):
                 request = child
                 break
         self.request = request
+        event = threading.Event()
 
         @self.zk.client.ChildrenWatch(self.path)
         def watch(children):
-            children = sorted(children)
-            if children[:1] == [request]:
-                self.event.set()
+            if sorted(children)[:1] == [request]:
+                event.set()
                 return False
-        self.event.wait()
+
+        event.wait()
 
     def __exit__(self, *exc_info):
         if exc_info == (None, None, None):

@@ -61,3 +61,63 @@ When we exit the lock, the request is removed from ZooKeeper:
     >>> lock.__exit__(None, None, None)
     >>> zk.print_tree(lock_path)
     /my-lock
+
+The lock is a manager and can be used with the ``with`` statement:
+
+    >>> with lock:
+    ...     print "holding the lock!"
+    ...     zk.print_tree(lock_path)
+    holding the lock!
+    /my-lock
+      /lr-0000000001
+        hostname = u'app.example.net'
+        requestor = u'i-1234'
+
+The lock is no longer held:
+
+    >>> zk.print_tree(lock_path)
+    /my-lock
+
+If there's an exception when the lock is held, the context manager will
+not release the lock in ZooKeeper:
+
+    >>> import test.test_support
+
+    >>> with test.test_support.captured_stdout() as output:
+    ...     with lock:
+    ...         print "holding the lock!"
+    ...         zk.print_tree(lock_path)
+    ...         raise RuntimeError("not letting go")
+    Traceback (most recent call last):
+      ...
+    RuntimeError: not letting go
+
+    >>> print output.getvalue()
+    holding the lock!
+    /my-lock
+      /lr-0000000002
+        hostname = u'app.example.net'
+        requestor = u'i-1234'
+
+The lock is still held:
+
+    >>> zk.print_tree(lock_path)
+    /my-lock
+      /lr-0000000002
+        hostname = u'app.example.net'
+        requestor = u'i-1234'
+
+If we enter the lock again, we'll see that the same request is used:
+
+    >>> lock.__enter__()
+    >>> zk.print_tree(lock_path)
+    /my-lock
+      /lr-0000000002
+        hostname = u'app.example.net'
+        requestor = u'i-1234'
+
+Exiting the lock without an error cleans up the request:
+
+    >>> lock.__exit__(None, None, None)
+    >>> zk.print_tree(lock_path)
+    /my-lock
