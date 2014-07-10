@@ -311,7 +311,7 @@ not:
     ERROR deploying
     Traceback (most recent call last):
       ...
-    NoNodeError: no node
+    RuntimeError: role lock node '/roles/my.role/lock' must exist
     CRITICAL FAILED deploying version 7.3
 
 We can even remove the role configuration to switch back to a

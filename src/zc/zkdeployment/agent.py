@@ -641,11 +641,14 @@ class PersistentLock(object):
         self.path = path
         self.semaphore = threading.Semaphore(0)
         prefix = self.path + '/'
-        request = self.zk.create(
-            prefix + 'lr-',
-            value=json.dumps({'requestor': hostid,
-                              'hostname': hostname}),
-            sequence=True).rsplit('/', 1)[1]
+        try:
+            request = self.zk.create(
+                prefix + 'lr-',
+                value=json.dumps({'requestor': hostid,
+                                  'hostname': hostname}),
+                sequence=True).rsplit('/', 1)[1]
+        except kazoo.exceptions.NoNodeError:
+            raise RuntimeError("role lock node '%s' must exist" % path)
         children = self.zk.client.get_children(self.path)
         for child in sorted(children):
             properties = zk.properties(prefix + child)
