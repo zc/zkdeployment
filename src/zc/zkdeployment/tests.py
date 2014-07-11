@@ -43,7 +43,7 @@ import zope.testing.renormalizing
 
 start_with_digit = re.compile('\d').match
 stage_build_path = re.compile('(/opt/[-\w]+/stage-build)$').search
-role_controller_script = re.compile(r'/opt/\w+-(\d+)-(\d+)-rc/bin/'
+role_controller_script = re.compile(r'/opt/\w+(-cf)?-(\d+)-(\d+)-rc/bin/'
                                     r'(start|end)ing-deployments$').search
 
 class TestRecipe:
@@ -312,10 +312,16 @@ def subprocess_popen(args, stdout=None, stderr=None):
         elif role_controller_script(command):
             print command, ' '.join(args)
             m = role_controller_script(command)
-            if m.group(3) == "start":
-                rc = int(m.group(1))
-            else:
+            if m.group(4) == "start":
                 rc = int(m.group(2))
+                if m.group(1):
+                    # Trigger to hint that something else in the cluster
+                    # causes /hosts version to be set to None.
+                    zk = zc.zk.ZK("zookeeper:2181")
+                    zk.properties("/hosts").update(version=None)
+                    print "*** Simulating deployment failure on another host"
+            else:
+                rc = int(m.group(3))
             if rc:
                 print "Busted!"
             return FakeSubprocess(returncode=rc)

@@ -470,6 +470,13 @@ class Agent(object):
             self.run_command(path, ZK_LOCATION, '/roles/' + self.role, *args)
 
     def deploy(self):
+
+        def continuing():
+            if self.role_controller:
+                return True
+            else:
+                return self.cluster_version is not None
+
         try:
             cluster_version = self.cluster_version
             if cluster_version is None:
@@ -542,7 +549,7 @@ class Agent(object):
             # Remove installed deployments that aren't in zk
             installed_apps = set()
             for deployment in sorted(self.get_installed_deployments()):
-                if self.cluster_version is None:
+                if not continuing():
                     raise Abandon
                 installed_apps.add(deployment.app)
                 if ((deployment.app, deployment.path, deployment.n)
@@ -553,7 +560,7 @@ class Agent(object):
 
             # update app software, if necessary
             for rpm_package_name, version in sorted(deploy_versions.items()):
-                if self.cluster_version is None:
+                if not continuing():
                     raise Abandon
                 self.install_something(rpm_package_name, version)
 
@@ -566,7 +573,7 @@ class Agent(object):
                         # The reason for the lock here is to prevent
                         # more than one deployment for an app at a
                         # time cluster wide.
-                        if self.cluster_version is None:
+                        if not continuing():
                             raise Abandon
 
                         try:

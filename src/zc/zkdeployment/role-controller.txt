@@ -279,14 +279,17 @@ Changing the version control URI causes the installation to be replaced:
     /opt/your-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
     INFO Done deploying version 7.2
 
-The role's ``lock`` node must exist; an error will triggered if it does
-not:
+If the cluster version is changed to None by another host after the
+deployments are under way but before they complete, the deployments on
+this host will be completed:
 
-    >>> zc.zkdeployment.agent.register()
     >>> zk.import_tree('''
     ... /roles
-    ...   /my.role : your-0-0-rc
-    ...      version = 'git:git@bitbucket.org:zc/your-rc.git#my-branch'
+    ...   # The "-cf" in the type causes a deployment failure on another
+    ...   # node to be simulated:
+    ...   /my.role : your-cf-0-0-rc
+    ...      version = '1.0.0'
+    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
@@ -294,15 +297,39 @@ not:
     ...        /my.role
     ... ''', trim=True)
 
+    >>> zk.properties('/hosts').update(version='7.2.1'); time.sleep(.5)
+    INFO ============================================================
+    INFO Deploying version 7.2.1
+    INFO Removing checkout your-0-0-rc
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install your-cf-0-0-rc-1.0.0
+    yum -y install your-cf-0-0-rc-1.0.0
+    INFO yum -q list installed your-cf-0-0-rc
+    yum -q list installed your-cf-0-0-rc
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO /opt/your-cf-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    /opt/your-cf-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    *** Simulating deployment failure on another host
+    INFO /tmp/tmpm4OVwI/TEST_ROOT/opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO /opt/your-cf-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    /opt/your-cf-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    INFO Done deploying version 7.2.1
+
+The role's ``lock`` node must exist; an error will triggered if it does
+not:
+
+    >>> _ = zk.delete('/roles/my.role/lock')
     >>> zk.properties('/hosts').update(version='7.3'); time.sleep(.5)
     INFO ============================================================
     INFO Deploying version 7.3
-    INFO git pull origin -a
-    INFO Build your-0-0-rc (git:git@bitbucket.org:zc/your-rc.git#my-branch)
-    INFO /opt/your-0-0-rc/stage-build
-    /opt/your-0-0-rc/stage-build
-    INFO chmod -R a+rX .
-    chmod -R a+rX .
+    INFO yum -q list installed your-cf-0-0-rc
+    yum -q list installed your-cf-0-0-rc
     INFO DEBUG: got deployments
     INFO DEBUG: remove old deployments
     INFO DEBUG: update software
@@ -329,7 +356,10 @@ node-oriented deployment strategy:
     >>> zk.properties('/hosts').update(version=7); time.sleep(.5)
     INFO ============================================================
     INFO Deploying version 7
-    INFO Removing checkout your-0-0-rc
+    INFO yum -q list installed your-cf-0-0-rc
+    yum -q list installed your-cf-0-0-rc
+    INFO yum -y remove your-cf-0-0-rc
+    yum -y remove your-cf-0-0-rc
     INFO DEBUG: got deployments
     INFO DEBUG: remove old deployments
     INFO DEBUG: update software
