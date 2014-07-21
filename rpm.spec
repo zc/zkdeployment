@@ -7,7 +7,7 @@ Group: Applications/ZIM
 Requires: cleanpython27
 Requires: sbo
 BuildRequires: cleanpython27
-%define python /opt/cleanpython26/bin/python
+%define python /opt/cleanpython27/bin/python
 
 ##########################################################################
 # Lines below this point normally shouldn't change
