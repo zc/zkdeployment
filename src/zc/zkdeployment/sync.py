@@ -2,6 +2,7 @@ import kazoo.exceptions
 import logging
 import optparse
 import os
+import sys
 import time
 import zc.lockfile
 import zc.zk
@@ -98,6 +99,7 @@ def sync_with_canonical(url, dry_run=False, force=False, tree_directory=None):
             retries += 1
             if retries > MAX_VCS_RETRIES:
                 raise
+            time.sleep(3)
 
 
     logger.info("VCS Version: " + str(vcs.version))
@@ -148,12 +150,12 @@ def main():
     parser.add_option('-t', '--tree-directory', default=None,
                       help="Working directiry for git repository")
     (options, args) = parser.parse_args()
-    while True:
-        try:
-            lock = zc.lockfile.LockFile("/var/tmp/zkdeployment_vcs_lock_")
-            break
-        except zc.lockfile.LockError:
-            time.sleep(3)
+    lock_file = "/var/tmp/zkdeployment_vcs_lock_"
+    try:
+        lock = zc.lockfile.LockFile(lock_file)
+    except zc.lockfile.LockError:
+        sys.stderr.write("Cannot lock %s\n" % lock_file)
+        raise SystemExit(2)
     try:
         sync_with_canonical(
             options.url, options.dry_run, options.force, options.tree_directory)
