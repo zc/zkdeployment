@@ -4,9 +4,9 @@ Release: 1
 
 Summary: ZooKeeper Deployment
 Group: Applications/ZIM
-Requires: cleanpython26
+Requires: cleanpython27
 Requires: sbo
-BuildRequires: cleanpython26
+BuildRequires: cleanpython27
 %define python /opt/cleanpython26/bin/python
 
 ##########################################################################
