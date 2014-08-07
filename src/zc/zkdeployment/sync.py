@@ -140,6 +140,7 @@ def sync_with_canonical(url, dry_run=False, force=False, tree_directory=None):
     zk.close()
 
 def main():
+    tombstone = "/usr/share/zkdeployment/tombstone"
     logging.basicConfig(level=logging.WARNING)
     parser = optparse.OptionParser()
     parser.add_option('-d', '--dry-run', action='store_true',
@@ -152,13 +153,20 @@ def main():
     (options, args) = parser.parse_args()
     lock_file = "/var/tmp/zkdeployment_vcs_lock_"
     try:
+        os.stat(os.path.dirname(tombstone))
+    except OSError:
+        os.makedirs(os.path.dirname(tombstone))
+    open(tombstone, "w")
+    try:
         lock = zc.lockfile.LockFile(lock_file)
+        open(tombstone, "w").write(os.getpid(), " acquired lock\n")
     except zc.lockfile.LockError:
-        sys.stderr.write("Cannot lock %s\n" % lock_file)
-        raise SystemExit(2)
+        # die a silent death, leaving our tombstone behind
+        raise SystemExit(0)
     try:
         sync_with_canonical(
             options.url, options.dry_run, options.force, options.tree_directory)
+        os.unlink(tombstone)
     finally:
         lock.close()
 
