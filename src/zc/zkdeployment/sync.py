@@ -163,7 +163,7 @@ def main():
         # die a silent death, leaving our tombstone behind
         if not os.path.exists(tombstone):
             open(tombstone, "w").write("failed to acquire lock\n")
-        raise sys.exit(0)
+        sys.exit(0)
     try:
         sync_with_canonical(
             options.url, options.dry_run, options.force, options.tree_directory)
