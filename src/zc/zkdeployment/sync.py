@@ -159,10 +159,10 @@ def main():
     open(tombstone, "w")
     try:
         lock = zc.lockfile.LockFile(lock_file)
-        open(tombstone, "w").write(os.getpid(), " acquired lock\n")
+        open(tombstone, "w").write(os.getpid() + " acquired lock\n")
     except zc.lockfile.LockError:
         # die a silent death, leaving our tombstone behind
-        raise SystemExit(0)
+        raise sys.exit(0)
     try:
         sync_with_canonical(
             options.url, options.dry_run, options.force, options.tree_directory)
