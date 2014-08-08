@@ -156,16 +156,23 @@ def main():
         os.stat(os.path.dirname(tombstone))
     except OSError:
         os.makedirs(os.path.dirname(tombstone))
-    open(tombstone, "w")
     try:
         lock = zc.lockfile.LockFile(lock_file)
-        open(tombstone, "w").write(os.getpid() + " acquired lock\n")
+        open(tombstone, "w").write(str(os.getpid()) + " acquired lock\n")
     except zc.lockfile.LockError:
         # die a silent death, leaving our tombstone behind
+        if not os.path.exists(tombstone):
+            open(tombstone, "w").write("failed to acquire lock\n")
         raise sys.exit(0)
     try:
         sync_with_canonical(
             options.url, options.dry_run, options.force, options.tree_directory)
+    except Exception as e:
+        if not os.path.exists(tombstone):
+            open(tombstone, "w").write("sync failed %s.%s: %s\n" %
+                                       (e.__class__.__module__,
+                                       e.__class__.__name__, e))
+    else:
         os.unlink(tombstone)
     finally:
         lock.close()
