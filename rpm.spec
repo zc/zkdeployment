@@ -5,7 +5,6 @@ Release: 1
 Summary: ZooKeeper Deployment
 Group: Applications/ZIM
 Requires: cleanpython27
-Requires: nagios-plugin-check-fileage
 Requires: sbo
 BuildRequires: cleanpython27
 %define python /opt/cleanpython27/bin/python
