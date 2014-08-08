@@ -50,21 +50,6 @@ rm -rf $RPM_BUILD_DIR/%{source}
 %pre
 rm -rf /opt/%{name}/eggs/setuptools*
 
-%post
-if [ "$1" = "1" ]; then
-cat <<EOF >/etc/zim/agent.d/zksync.cfg
-[zksync]
-class = zim.nagiosplugin.Monitor
-interval = 180
-/zkdeployment/sync =
-    /usr/bin/check-fileage -e -f /usr/share/zkdeployment/tombstone -w 3 -c 20
-EOF
-fi
-
-%preun
-if [ "$1" = "0" ]; then
-    rm /etc/zim/agent.d/zksync.cfg
-fi
 %files
 %defattr(-, root, root)
 /opt/%{name}
