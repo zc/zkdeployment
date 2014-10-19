@@ -1,7 +1,9 @@
 from zc.zkdeployment.interfaces import IVCS
 
 import collections
+import contextlib
 import json
+import kazoo.exceptions
 import logging
 import optparse
 import os
@@ -12,6 +14,7 @@ import signal
 import simplejson
 import socket
 import sys
+import threading
 import time
 import zc.thread
 import zc.zk
@@ -236,16 +239,39 @@ class Agent(object):
                         app.decode('utf8'), rpm_name.decode('utf8'),
                         path, int(n))
 
+    def get_role_controller(self):
+        """Return the configured role controller."""
+        if not self.role:
+            return None, None
+        try:
+            props = self.zk.properties('/roles/' + self.role)
+        except kazoo.exceptions.NoNodeError:
+            return None, None
+        return props["type"], props["version"]
+
     def _path(self, *names):
         return os.path.join(self.root, *names)
 
-    def get_installed_opts(self):
+    def get_installed_applications(self):
+        return self._get_installed('bin', 'zookeeper-deploy')
+
+    def get_installed_role_controller(self):
+        """Return RPM name for an installed role controller, or None."""
+        rcs = self._get_installed('bin', 'starting-deployments')
+        if rcs:
+            if len(rcs) > 1:
+                raise RuntimeError(
+                    "too many installed role controllers: %r" % rcs)
+            return list(rcs)[0]
+        else:
+            return None
+
+    def _get_installed(self, *parts):
         return set(
             name
             for name in os.listdir(self._path('opt'))
-            if os.path.exists(
-                self._path('opt', name, 'bin', 'zookeeper-deploy')
-            ))
+            if os.path.exists(self._path('opt', name, *parts))
+            )
 
     def is_under_vc(self, *path):
         path = self._path(*path)
@@ -262,9 +288,9 @@ class Agent(object):
             return None # Checkout, no rpm version
 
         try:
-            output = zc.zkdeployment.run_command(
-                    ('yum -q list installed '+rpm_name).split(),
-                    verbose=self.verbose, return_output=True)
+            output = self.run_yum(
+                '-q', 'list', 'installed', rpm_name,
+                return_output=True)
         except RuntimeError:
             return None
 
@@ -280,8 +306,7 @@ class Agent(object):
             rpm_name = versioned_app(rpm_name).group(1)
 
     def uninstall_rpm(self, rpm_name):
-        zc.zkdeployment.run_command(['yum', '-y', 'remove', rpm_name],
-                verbose=self.verbose, return_output=False)
+        self.run_yum('-y', 'remove', rpm_name)
         self._uninstall(rpm_name)
 
     def uninstall_something(self, opt_name):
@@ -295,9 +320,7 @@ class Agent(object):
     def remove_deployment(self, deployment):
         script = self._path(
             'opt', deployment.rpm_name, 'bin', 'zookeeper-deploy')
-        zc.zkdeployment.run_command(
-            [script, '-u', deployment.path, str(deployment.n)],
-            verbose=self.verbose, return_output=False)
+        self.run_command(script, '-u', deployment.path, str(deployment.n))
         deployed = self._path(
             'etc', deployment.app,
             path2name(deployment.path, deployment.n, "deployed"))
@@ -316,8 +339,7 @@ class Agent(object):
         command = [script, deployment.path, str(deployment.n)]
         if deployment.subtype:
             command[1:1] = ['-r', deployment.subtype]
-        zc.zkdeployment.run_command(
-            command, verbose=self.verbose, return_output=False)
+        self.run_command(*command)
         with open(
             self._path('etc', app_name,
                        path2name(deployment.path, deployment.n, 'script')
@@ -325,7 +347,134 @@ class Agent(object):
             'w') as f:
             f.write(script)
 
+    def run_command(self, *args, **kw):
+        return zc.zkdeployment.run_command(args, verbose=self.verbose, **kw)
+
+    def run_yum(self, *args, **kw):
+        """Run yum, ensuring 'clean' is invoked before an 'install'."""
+        subcmd = [a for a in args if a[0] != '-'][0]
+        if subcmd == 'install' and not self.clean:
+            self.run_command('yum', '-y', 'clean', 'all')
+            self.clean = True
+        return self.run_command('yum', *args, **kw)
+
+    def install_something(self, rpm_package_name, version):
+        """Install a software package from yum or version control.."""
+        rpm_version = self.get_rpm_version(rpm_package_name)
+        if rpm_version != version:
+            # Note that we always get here for VCS installs,
+            # since they have no rpm version.
+            rpm_name = rpm_package_name
+            if version is DONT_CARE:
+                if rpm_version is not None:
+                    return # single-version app, is already installed
+            else:
+                m = vcs_prefix(version)
+                if m:
+                    install_dir = self._path('opt', rpm_name)
+                    vcs = zope.component.getUtility(IVCS, m.group(1))
+                    if rpm_version is not None:
+                        self.uninstall_rpm(rpm_name)
+                    else:
+                        if os.path.exists(install_dir):
+                            if vcs.is_under_vc(install_dir):
+                                old_version = vcs.get_version(
+                                    install_dir, self.verbose)
+                            else:
+                                old_version = None
+
+                            if old_version != version:
+                                logger.info(
+                                    "Removing conflicting checkout"
+                                    " %r != %r"
+                                    % (old_version, version))
+                                self._uninstall(rpm_name)
+
+                    vcs.update(install_dir, version, self.verbose)
+
+                    logger.info("Build %s (%s)" % (rpm_name, version))
+                    here = os.getcwd()
+                    os.chdir(self._path('opt', rpm_name))
+                    try:
+                        self.run_command(
+                            self._path('opt', rpm_name, 'stage-build'))
+                        self.run_command('chmod', '-R', 'a+rX', '.')
+                    finally:
+                        os.chdir(here)
+                    return
+                else:
+                    rpm_name += '-' + version
+
+            if self.is_under_vc('opt', rpm_package_name):
+                # We used VCS before. Clean it up.
+                logger.info("Removing checkout " + rpm_package_name)
+                shutil.rmtree(self._path('opt', rpm_package_name))
+
+            self.run_yum('-y', 'install', rpm_name)
+
+            rpm_version = self.get_rpm_version(rpm_package_name)
+            if (rpm_version != version) and (version is not DONT_CARE):
+                if rpm_version:
+                    # Yum is a disaster. Try downgrade
+                    self.run_yum('-y', 'downgrade', rpm_name)
+                    rpm_version = self.get_rpm_version(rpm_package_name)
+                if rpm_version != version:
+                    raise SystemError(
+                        "Failed to install %s (installed: %s)" %
+                        (rpm_name, rpm_version))
+
+    def update_role_controller(self):
+        """Make sure the installed role controller matches configuration."""
+        desired = self.get_role_controller()
+        installed = self.get_installed_role_controller()
+        if installed:
+            have = installed, self.get_rpm_version(installed)
+        else:
+            have = None, None
+        if desired == have:
+            self.role_controller = have[0]
+            return
+        if have[0]:
+            if desired[0] == have[0]:
+                # Update version selected
+                self.install_something(*desired)
+                self.role_controller = desired[0]
+                return
+            self.uninstall_something(installed)
+        if desired[0]:
+            self.install_something(*desired)
+        self.role_controller = desired[0]
+
+    def node_lock(self, path):
+        if self.role_controller:
+            return dummy_lock()
+        else:
+            return self.zk.client.Lock(
+                '/agent-locks/'+ path2name(path),
+                '%s (%s)' % (self.host_name, self.host_identifier),
+                )
+
+    def role_lock(self):
+        if self.role_controller:
+            return PersistentLock(self.zk, '/roles/%s/lock' % self.role,
+                                  self.host_name, self.host_identifier)
+        else:
+            return dummy_lock()
+
+    def run_role_script(self, name, *args):
+        """Run a role controller script, if we have a controller."""
+        if self.role_controller:
+            path = '/opt/%s/bin/%s' % (self.role_controller, name)
+            # It's tempting to request that output be returned, just so
+            # it can show up in the log.
+            self.run_command(path, ZK_LOCATION, '/roles/' + self.role, *args)
+
     def deploy(self):
+
+        def check_continuing():
+            if (self.cluster_version is None) and not self.role_controller:
+                raise Abandon()
+
         try:
             cluster_version = self.cluster_version
             if cluster_version is None:
@@ -342,6 +491,9 @@ class Agent(object):
                 return # Nothing's changed
             logger.info('=' * 60)
             logger.info('Deploying version ' + str(cluster_version))
+
+            self.clean = False
+            self.update_role_controller()
 
             try:
                 # We often hang here agthering deployment info.
@@ -395,123 +547,48 @@ class Agent(object):
             # Remove installed deployments that aren't in zk
             installed_apps = set()
             for deployment in sorted(self.get_installed_deployments()):
-                if self.cluster_version is None:
-                    raise Abandon
+                check_continuing()
                 installed_apps.add(deployment.app)
                 if ((deployment.app, deployment.path, deployment.n)
                     not in to_deploy):
                     self.remove_deployment(deployment)
 
-
             logger.info("DEBUG: update software")
 
             # update app software, if necessary
-            clean = False
             for rpm_package_name, version in sorted(deploy_versions.items()):
-                if self.cluster_version is None:
-                    raise Abandon
-                rpm_version = self.get_rpm_version(rpm_package_name)
-                if rpm_version != version:
-                    # Note that we always get here for VCS installs,
-                    # since they have no rpm version.
-                    rpm_name = rpm_package_name
-                    if version is DONT_CARE:
-                        if rpm_version is not None:
-                            continue # single-version app, is already installed
-                    else:
-                        m = vcs_prefix(version)
-                        if m:
-                            install_dir = self._path('opt', rpm_name)
-                            vcs = zope.component.getUtility(IVCS, m.group(1))
-                            if rpm_version is not None:
-                                self.uninstall_rpm(rpm_name)
-                            else:
-                                if os.path.exists(install_dir):
-                                    if vcs.is_under_vc(install_dir):
-                                        old_version = vcs.get_version(
-                                            install_dir, self.verbose)
-                                    else:
-                                        old_version = None
-
-                                    if old_version != version:
-                                        logger.info(
-                                            "Removing conflicting checkout"
-                                            " %r != %r"
-                                            % (old_version, version))
-                                        self._uninstall(rpm_name)
-
-                            vcs.update(install_dir, version, self.verbose)
-
-                            logger.info("Build %s (%s)" % (rpm_name, version))
-                            here = os.getcwd()
-                            os.chdir(self._path('opt', rpm_name))
-                            try:
-                                zc.zkdeployment.run_command(
-                                    [self._path(
-                                        'opt', rpm_name, 'stage-build')],
-                                    verbose=self.verbose, return_output=False)
-                                zc.zkdeployment.run_command(
-                                    ['chmod', '-R', 'a+rX', '.'],
-                                    verbose=self.verbose, return_output=False)
-                            finally:
-                                os.chdir(here)
-                            continue
-                        else:
-                            rpm_name += '-' + version
-
-                    if self.is_under_vc('opt', rpm_package_name):
-                        # We used VCS before. Clean it up.
-                        logger.info("Removing checkout " + rpm_package_name)
-                        shutil.rmtree(self._path('opt', rpm_package_name))
-
-                    if not clean:
-                        zc.zkdeployment.run_command('yum -y clean all'.split(),
-                                verbose=self.verbose, return_output=False)
-                        clean = True
-
-                    zc.zkdeployment.run_command(
-                        ['yum', '-y', 'install', rpm_name],
-                        verbose=self.verbose, return_output=False)
-
-                    rpm_version = self.get_rpm_version(rpm_package_name)
-                    if (rpm_version != version) and (version is not DONT_CARE):
-                        if rpm_version:
-                            # Yum is a disaster. Try downgrade
-                            zc.zkdeployment.run_command(
-                                ['yum', '-y', 'downgrade', rpm_name],
-                                verbose=self.verbose, return_output=False)
-                            rpm_version = self.get_rpm_version(rpm_package_name)
-                        if rpm_version != version:
-                            raise SystemError(
-                                "Failed to install %s (installed: %s)" %
-                                (rpm_name, rpm_version))
+                check_continuing()
+                self.install_something(rpm_package_name, version)
 
             # Now update/install the needed deployments
-            for deployment in sorted(deployments, key=lambda d: (d.path, d.n)):
-                with self.zk.client.Lock(
-                    '/agent-locks/'+ path2name(deployment.path),
-                    '%s (%s)' % (self.host_name, self.host_identifier),
-                    ):
-                    # The reason for the lock here is to prevent
-                    # more than one deployment for an app at a
-                    # time cluster wide.
-                    if self.cluster_version is None:
-                        raise Abandon
+            with self.role_lock():
+                self.run_role_script('starting-deployments')
+                for deployment in sorted(deployments,
+                                         key=lambda d: (d.path, d.n)):
+                    with self.node_lock(deployment.path):
+                        # The reason for the lock here is to prevent
+                        # more than one deployment for an app at a
+                        # time cluster wide.
+                        check_continuing()
 
-                    try:
-                        self.install_deployment(deployment)
-                    except:
-                        # We errored deploying.  We don't want the
-                        # error to propigate to other nodes, so we set
-                        # the cluster version to None.  We do this
-                        # before releasng the lock, and we do it later
-                        # as well to handle other failures.
-                        self.hosts_properties.update(version=None)
-                        raise
+                        try:
+                            self.install_deployment(deployment)
+                        except:
+                            # We errored deploying.  We don't want the
+                            # error to propigate to other nodes, so we set
+                            # the cluster version to None.  We do this
+                            # before releasng the lock, and we do it later
+                            # as well to handle other failures.
+                            self.hosts_properties.update(version=None)
+                            self.run_role_script(
+                                'ending-deployments',
+                                deployment.path, str(deployment.n))
+                            raise
+                self.run_role_script('ending-deployments')
 
             # Uninstall software we don't have any more:
             for rpm_name in sorted(
-                self.get_installed_opts() -
+                self.get_installed_applications() -
                 set(deployment.rpm_name for deployment in deployments)
                 ):
                 self.uninstall_something(rpm_name)
@@ -552,6 +629,55 @@ class Agent(object):
             sys.exit(0)
         signal.signal(signal.SIGTERM, handle_signal)
         signallableblock()
+
+
+@contextlib.contextmanager
+def dummy_lock():
+    yield
+
+
+class PersistentLock(object):
+
+    def __init__(self, zk, path, hostname, hostid):
+        try:
+            zk.get_children(path)
+        except kazoo.exceptions.NoNodeError:
+            raise RuntimeError("role lock node '%s' must exist" % path)
+        self.zk = zk
+        self.path = path
+        self.hostname = hostname
+        self.hostid = hostid
+
+    def __enter__(self):
+        prefix = self.path + '/'
+        request = self.zk.create(
+            prefix + 'lr-',
+            value=json.dumps({'requestor': self.hostid,
+                              'hostname': self.hostname}),
+            sequence=True).rsplit('/', 1)[1]
+        children = self.zk.client.get_children(self.path)
+        for child in sorted(children):
+            properties = self.zk.properties(prefix + child)
+            if properties.get('requestor') == self.hostid:
+                if child != request:
+                    self.zk.delete(prefix + request)
+                request = child
+                break
+        self.request = request
+        event = threading.Event()
+
+        @self.zk.client.ChildrenWatch(self.path)
+        def watch(children):
+            if sorted(children)[:1] == [request]:
+                event.set()
+                return False
+
+        event.wait()
+
+    def __exit__(self, *exc_info):
+        if exc_info == (None, None, None):
+            self.zk.delete(self.path + '/' + self.request)
+
 
 class Abandon(Exception):
     "A deployment is abandoned due to a cluster deployment error"

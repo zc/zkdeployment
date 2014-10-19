@@ -42,7 +42,9 @@ import zope.testing.setupstack
 import zope.testing.renormalizing
 
 start_with_digit = re.compile('\d').match
-stage_build_path = re.compile('(/opt/\w+/stage-build)$').search
+stage_build_path = re.compile('(/opt/[-\w]+/stage-build)$').search
+role_controller_script = re.compile(r'/opt/\w+(-cf)?-(\d+)-(\d+)-rc/bin/'
+                                    r'(start|end)ing-deployments$').search
 
 class TestRecipe:
 
@@ -230,12 +232,23 @@ def subprocess_popen(args, stdout=None, stderr=None):
                     or
                     (command == 'downgrade' and version <= oldv)
                     ):
+                    if package.endswith('-rc'):
+                        _, src, erc, _ = package.rsplit('-', 3)
+                        bin = {
+                            'starting-deployments': '',
+                            'ending-deployments': '',
+                            }
+                    else:
+                        bin = {
+                            'zookeeper-deploy': '',
+                            }
                     buildfs(
                         dict(
                             opt={
                                 package: dict(
-                                    bin={'zookeeper-deploy': ''},
+                                    bin=bin,
                                     version=version+'-1',
+                                    **{'stage-build': ''}
                                     )},
                             ))
             elif command == 'remove':
@@ -263,35 +276,26 @@ def subprocess_popen(args, stdout=None, stderr=None):
 
         elif command == 'svn':
             if args[0] == 'co' and len(args) == 3:
-                bin_path = os.path.join(args[2], 'bin')
                 svn_path = os.path.join(args[2], '.svn')
                 url_path = os.path.join(args[2], 'url')
                 if os.path.exists(url_path):
                     with open(url_path) as f:
                         if f.read() != args[1]:
                             raise ValueError('bad svn url')
-                if not os.path.exists(bin_path):
-                    os.makedirs(bin_path)
                 if not os.path.exists(svn_path):
                     os.makedirs(svn_path)
-                with open(os.path.join(args[2], 'bin', 'zookeeper-deploy'),
-                          'w'):
-                    pass
                 with open(url_path, 'w') as f:
                     f.write(args[1])
+                checkout_software(args[2])
             if args[0] == 'info':
                 with open(os.path.join(args[1], 'url')) as f:
                     print >> stdout, info_template % f.read()
 
         elif command == 'git':
             if args[0] == 'clone' and len(args) == 3:
-                bin_path = os.path.join(args[2], 'bin')
                 git_path = os.path.join(args[2], '.git')
-                os.makedirs(bin_path)
                 os.makedirs(git_path)
-                with open(os.path.join(bin_path, 'zookeeper-deploy'),
-                          'w'):
-                    pass
+                checkout_software(args[2])
 
         elif command == 'chmod':
             if args != ['-R', 'a+rX', '.']:
@@ -304,6 +308,24 @@ def subprocess_popen(args, stdout=None, stderr=None):
         elif stage_build_path(command) and not args:
             assert_(os.getcwd() == os.path.dirname(command))
             print stage_build_path(command).group(1)
+
+        elif role_controller_script(command):
+            print command, ' '.join(args)
+            m = role_controller_script(command)
+            if m.group(4) == "start":
+                rc = int(m.group(2))
+                if m.group(1):
+                    # Trigger to hint that something else in the cluster
+                    # causes /hosts version to be set to None.
+                    zk = zc.zk.ZK("zookeeper:2181")
+                    zk.properties("/hosts").update(version=None)
+                    print "*** Simulating deployment failure on another host"
+            else:
+                rc = int(m.group(3))
+            if rc:
+                print "Busted!"
+            return FakeSubprocess(returncode=rc)
+
         else:
             raise ValueError("No such command %s %r" % (command, args))
     except:
@@ -311,6 +333,20 @@ def subprocess_popen(args, stdout=None, stderr=None):
         return FakeSubprocess(returncode=1)
     else:
         return FakeSubprocess(returncode=0)
+
+def checkout_software(path):
+    """Initialize software checkout aside from VCS-specific details."""
+    bin_path = os.path.join(path, 'bin')
+    def bin(name):
+        return os.path.join(bin_path, name)
+    if not os.path.exists(bin_path):
+        os.makedirs(bin_path)
+    if path.endswith("-rc"):
+        with open(bin('starting-deployments'), 'w'): pass
+        with open(bin('ending-deployments'), 'w'): pass
+    else:
+        with open(bin('zookeeper-deploy'), 'w'): pass
+    with open(os.path.join(path, 'stage-build'), 'w'): pass
 
 info_template = """Path: .
 URL: %s
@@ -850,6 +886,98 @@ def test_downgrade():
     >>> zk.close()
     """
 
+def test_role_controller_addition():
+    """
+    >>> setup_logging()
+    >>> setup_role('my.role')
+
+    Let's start with a traditional installation (no role-controller):
+
+    >>> import zc.zk
+    >>> zk = zc.zk.ZK('zookeeper:2181')
+    >>> zk.import_tree('''
+    ... /cust
+    ...   /cms : z4m
+    ...      version = u'0.9.0'
+    ...      /deploy
+    ...        /my.role
+    ... /cust2
+    ... ''', trim=True)
+
+    >>> agent = zc.zkdeployment.agent.Agent()
+    INFO Agent starting, cluster 1, host 1
+
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=2); time.sleep(.5)
+    INFO ============================================================
+    INFO Deploying version 2
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO /opt/z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy -u /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy -u /cust2/someapp/cms 0
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install z4m-0.9.0
+    yum -y install z4m-0.9.0
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO yum -y downgrade z4m-0.9.0
+    yum -y downgrade z4m-0.9.0
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO yum -y remove z4mmonitor
+    yum -y remove z4mmonitor
+    INFO Done deploying version 2
+
+    If we add a role-controller, it will be installed:
+
+    >>> zk.import_tree('''
+    ... /roles
+    ...   /my.role : my-0-0-rc
+    ...      version = '1.0.0'
+    ...      /lock
+    ... /cust
+    ...   /cms : z4m
+    ...      version = u'0.9.0'
+    ...      /deploy
+    ...        /my.role
+    ... ''', trim=True)
+
+    >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
+    ...     zk.properties('/hosts').update(version=3); time.sleep(.5)
+    INFO ============================================================
+    INFO Deploying version 3
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install my-0-0-rc-1.0.0
+    yum -y install my-0-0-rc-1.0.0
+    INFO yum -q list installed my-0-0-rc
+    yum -q list installed my-0-0-rc
+    INFO DEBUG: got deployments
+    INFO DEBUG: remove old deployments
+    INFO DEBUG: update software
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    INFO /tmp/tmpcwTGRH/TEST_ROOT/opt/z4m/bin/zookeeper-deploy /cust/cms 0
+    z4m/bin/zookeeper-deploy /cust/cms 0
+    INFO /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    INFO Done deploying version 3
+
+    >>> agent.close()
+    >>> zk.close()
+    """
+
 class TestStream:
 
     def write(self, text):
@@ -891,7 +1019,8 @@ def lock(self, *a):
 
 zc.zk.testing.Client.Lock = lock
 
-def setUp(test, initial_tree=initial_tree):
+def setUp(test, initial_tree=initial_tree,
+          initial_file_system=initial_file_system):
     zope.testing.setupstack.setUpDirectory(test)
     zope.component.testing.setUp()
     zope.testing.setupstack.register(test, zope.component.testing.tearDown)
@@ -903,6 +1032,18 @@ def setUp(test, initial_tree=initial_tree):
         test, lambda : zc.zk.testing.tearDown(test))
     buildfs(initial_file_system)
 
+    role_path = os.path.join(os.environ['TEST_ROOT'],
+                             zc.zkdeployment.agent.ROLE_LOCATION)
+
+    def setup_role(role):
+        with open(role_path, 'w') as f:
+            f.write(role)
+
+    def clear_role():
+        if os.path.exists(role_path):
+            os.unlink(role_path)
+
+    zope.testing.setupstack.register(test, clear_role)
     zope.testing.setupstack.context_manager(
         test, mock.patch('socket.getfqdn')
         ).return_value = 'host42'
@@ -918,6 +1059,7 @@ def setUp(test, initial_tree=initial_tree):
     handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
     logger.setLevel(logging.INFO)
     test.globs['setup_logging'] = lambda : logger.setLevel(logging.INFO)
+    test.globs['setup_role'] = setup_role
 
     zope.testing.setupstack.register(
         test,
@@ -928,6 +1070,20 @@ def setUp(test, initial_tree=initial_tree):
 def setup_sync(test):
     setUp(test, initial_tree=' ')
 
+role_controller_file_system = dict(
+    etc = dict(
+        zmh = dict(
+            pxemac = '424242424242\n',
+            ),
+        zim = dict(
+            host_version = '1',
+            ),
+        **{
+            'init.d': dict(zimagent=''),
+            }),
+    opt = dict(),
+    )
+
 def test_suite():
     suite = unittest.TestSuite()
     checker = zope.testing.renormalizing.RENormalizing([
@@ -935,24 +1091,31 @@ def test_suite():
         (re.compile(r'INFO DEBUG: [^\n]+\n'), ''),
         (re.compile(r"u'/"), "'/"),
         ])
+    m = manuel.doctest.Manuel(
+        checker=checker,
+        optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE
+        ) + manuel.capture.Manuel()
     suite.addTest(
         manuel.testing.TestSuite(
-            manuel.doctest.Manuel(
-                checker=checker,
-                optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE
-                ) +
-            manuel.capture.Manuel(),
+            m,
             'agent.txt', 'git.txt',
             setUp=setUp,
             tearDown=zope.testing.setupstack.tearDown,
             ))
     suite.addTest(
         manuel.testing.TestSuite(
-            manuel.doctest.Manuel(
-                checker=checker,
-                optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE
-                ) +
-            manuel.capture.Manuel(),
+            m,
+            'persistent-lock.txt',
+            'role-controller.txt',
+            setUp=(lambda t: setUp(
+                t,
+                initial_tree='/hosts\n version=1',
+                initial_file_system=role_controller_file_system)),
+            tearDown=zope.testing.setupstack.tearDown,
+            ))
+    suite.addTest(
+        manuel.testing.TestSuite(
+            m,
             'sync.txt', 'syncgit.txt',
             setUp=setup_sync,
             tearDown=zope.testing.setupstack.tearDown,
@@ -965,5 +1128,3 @@ def test_suite():
     suite.addTest(doctest.DocTestSuite('zc.zkdeployment.kazoofilter'))
 
     return suite
-
-
