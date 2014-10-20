@@ -84,6 +84,7 @@ class Agent(object):
 
         host_path = '/hosts/'+self.host_identifier
         self.zk = zc.zk.ZK(ZK_LOCATION)
+        os.environ["ZC_ZK_CONNECTION_STRING"] = ZK_LOCATION
         try:
             if self.host_identifier in self.zk.get_children('/hosts'):
                 if self.zk.is_ephemeral(host_path):
@@ -467,7 +468,7 @@ class Agent(object):
             path = '/opt/%s/bin/%s' % (self.role_controller, name)
             # It's tempting to request that output be returned, just so
             # it can show up in the log.
-            self.run_command(path, ZK_LOCATION, '/roles/' + self.role, *args)
+            self.run_command(path, '/roles/' + self.role, *args)
 
     def deploy(self):
 

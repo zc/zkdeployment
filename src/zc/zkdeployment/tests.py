@@ -966,12 +966,12 @@ def test_role_controller_addition():
     INFO DEBUG: update software
     INFO yum -q list installed z4m
     yum -q list installed z4m
-    INFO /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
-    /opt/my-0-0-rc/bin/starting-deployments zookeeper:2181 /roles/my.role
+    INFO /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
+    /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
     INFO /tmp/tmpcwTGRH/TEST_ROOT/opt/z4m/bin/zookeeper-deploy /cust/cms 0
     z4m/bin/zookeeper-deploy /cust/cms 0
-    INFO /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
-    /opt/my-0-0-rc/bin/ending-deployments zookeeper:2181 /roles/my.role
+    INFO /opt/my-0-0-rc/bin/ending-deployments /roles/my.role
+    /opt/my-0-0-rc/bin/ending-deployments /roles/my.role
     INFO Done deploying version 3
 
     >>> agent.close()
