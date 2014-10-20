@@ -524,9 +524,9 @@ Failure can occur for the ``ending-deployments`` script:
         version = 7
 
 If there's a failure during the deployment of applications onto the
-host, the ``ending-deployments`` script is invoked with the node and
-index for the failed deployment.  We'll install an app with a
-mis-behaving ``zookeeper-deploy`` script to see this in action:
+host, the ``ending-deployments`` script is not invoked at the end.
+We'll install an app with a mis-behaving ``zookeeper-deploy`` script to
+see this in action:
 
     >>> zk.import_tree('''
     ... /roles
@@ -573,8 +573,6 @@ mis-behaving ``zookeeper-deploy`` script to see this in action:
     cranky/bin/zookeeper-deploy /cust/upset-and 0
     waaaaaaaaaaaa
     ERROR FAILURE
-    INFO /opt/my-0-0-rc/bin/ending-deployments /roles/my.role /cust/upset-and 0
-    /opt/my-0-0-rc/bin/ending-deployments /roles/my.role /cust/upset-and 0
     ERROR deploying
     Traceback (most recent call last):
       ...

@@ -581,9 +581,6 @@ class Agent(object):
                             # before releasng the lock, and we do it later
                             # as well to handle other failures.
                             self.hosts_properties.update(version=None)
-                            self.run_role_script(
-                                'ending-deployments',
-                                deployment.path, str(deployment.n))
                             raise
                 self.run_role_script('ending-deployments')
 
