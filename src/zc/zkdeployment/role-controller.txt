@@ -56,6 +56,8 @@ and managed by the deployment agent.
     yum -y install my-0-0-rc-1.0.0
     INFO yum -q list installed my-0-0-rc
     yum -q list installed my-0-0-rc
+    INFO /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
+    /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
     INFO yum -y install z4m-0.9.0
     yum -y install z4m-0.9.0
     INFO DEBUG: got deployments
@@ -63,8 +65,6 @@ and managed by the deployment agent.
     INFO DEBUG: update software
     INFO yum -q list installed z4m
     yum -q list installed z4m
-    INFO /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
-    /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
     INFO /opt/z4m/bin/zookeeper-deploy /cust/cms 0
     z4m/bin/zookeeper-deploy /cust/cms 0
     INFO /opt/my-0-0-rc/bin/ending-deployments /roles/my.role
@@ -99,13 +99,13 @@ updated before any deployments are performed:
     yum -y install my-0-0-rc-1.0.1
     INFO yum -q list installed my-0-0-rc
     yum -q list installed my-0-0-rc
+    INFO /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
+    /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
     INFO DEBUG: got deployments
     INFO DEBUG: remove old deployments
     INFO DEBUG: update software
     INFO yum -q list installed z4m
     yum -q list installed z4m
-    INFO /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
-    /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
     INFO /opt/z4m/bin/zookeeper-deploy /cust/cms 0
     z4m/bin/zookeeper-deploy /cust/cms 0
     INFO /opt/my-0-0-rc/bin/ending-deployments /roles/my.role
@@ -143,13 +143,13 @@ Downgrading the role controller works as expected:
     yum -y downgrade my-0-0-rc-1.0.0
     INFO yum -q list installed my-0-0-rc
     yum -q list installed my-0-0-rc
+    INFO /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
+    /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
     INFO DEBUG: got deployments
     INFO DEBUG: remove old deployments
     INFO DEBUG: update software
     INFO yum -q list installed z4m
     yum -q list installed z4m
-    INFO /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
-    /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
     INFO /opt/z4m/bin/zookeeper-deploy /cust/cms 0
     z4m/bin/zookeeper-deploy /cust/cms 0
     INFO /opt/my-0-0-rc/bin/ending-deployments /roles/my.role
@@ -183,13 +183,13 @@ Switching to a different controller entirely also works:
     yum -y install your-0-0-rc-1.0.0
     INFO yum -q list installed your-0-0-rc
     yum -q list installed your-0-0-rc
+    INFO /opt/your-0-0-rc/bin/starting-deployments /roles/my.role
+    /opt/your-0-0-rc/bin/starting-deployments /roles/my.role
     INFO DEBUG: got deployments
     INFO DEBUG: remove old deployments
     INFO DEBUG: update software
     INFO yum -q list installed z4m
     yum -q list installed z4m
-    INFO /opt/your-0-0-rc/bin/starting-deployments /roles/my.role
-    /opt/your-0-0-rc/bin/starting-deployments /roles/my.role
     INFO /opt/z4m/bin/zookeeper-deploy /cust/cms 0
     z4m/bin/zookeeper-deploy /cust/cms 0
     INFO /opt/your-0-0-rc/bin/ending-deployments /roles/my.role
@@ -227,13 +227,13 @@ Role controllers can be installed from version control like other software:
     /opt/your-0-0-rc/stage-build
     INFO chmod -R a+rX .
     chmod -R a+rX .
+    INFO /opt/your-0-0-rc/bin/starting-deployments /roles/my.role
+    /opt/your-0-0-rc/bin/starting-deployments /roles/my.role
     INFO DEBUG: got deployments
     INFO DEBUG: remove old deployments
     INFO DEBUG: update software
     INFO yum -q list installed z4m
     yum -q list installed z4m
-    INFO /opt/your-0-0-rc/bin/starting-deployments /roles/my.role
-    /opt/your-0-0-rc/bin/starting-deployments /roles/my.role
     INFO /opt/z4m/bin/zookeeper-deploy /cust/cms 0
     z4m/bin/zookeeper-deploy /cust/cms 0
     INFO /opt/your-0-0-rc/bin/ending-deployments /roles/my.role
@@ -266,13 +266,13 @@ Changing the version control URI causes the installation to be replaced:
     /opt/your-0-0-rc/stage-build
     INFO chmod -R a+rX .
     chmod -R a+rX .
+    INFO /opt/your-0-0-rc/bin/starting-deployments /roles/my.role
+    /opt/your-0-0-rc/bin/starting-deployments /roles/my.role
     INFO DEBUG: got deployments
     INFO DEBUG: remove old deployments
     INFO DEBUG: update software
     INFO yum -q list installed z4m
     yum -q list installed z4m
-    INFO /opt/your-0-0-rc/bin/starting-deployments /roles/my.role
-    /opt/your-0-0-rc/bin/starting-deployments /roles/my.role
     INFO /opt/z4m/bin/zookeeper-deploy /cust/cms 0
     z4m/bin/zookeeper-deploy /cust/cms 0
     INFO /opt/your-0-0-rc/bin/ending-deployments /roles/my.role
@@ -310,11 +310,11 @@ this host will be completed:
     INFO DEBUG: got deployments
     INFO DEBUG: remove old deployments
     INFO DEBUG: update software
-    INFO yum -q list installed z4m
-    yum -q list installed z4m
     INFO /opt/your-cf-0-0-rc/bin/starting-deployments /roles/my.role
     /opt/your-cf-0-0-rc/bin/starting-deployments /roles/my.role
     *** Simulating deployment failure on another host
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
     INFO /tmp/tmpm4OVwI/TEST_ROOT/opt/z4m/bin/zookeeper-deploy /cust/cms 0
     z4m/bin/zookeeper-deploy /cust/cms 0
     INFO /opt/your-cf-0-0-rc/bin/ending-deployments /roles/my.role
@@ -333,8 +333,6 @@ not:
     INFO DEBUG: got deployments
     INFO DEBUG: remove old deployments
     INFO DEBUG: update software
-    INFO yum -q list installed z4m
-    yum -q list installed z4m
     ERROR deploying
     Traceback (most recent call last):
       ...
@@ -444,10 +442,6 @@ Failure can occur for the ``starting-deployments`` script:
     INFO DEBUG: got deployments
     INFO DEBUG: remove old deployments
     INFO DEBUG: update software
-    INFO yum -y install z4m-5.79.5
-    yum -y install z4m-5.79.5
-    INFO yum -q list installed z4m-5.79.5
-    yum -q list installed z4m-5.79.5
     INFO /opt/my-1-0-rc/bin/starting-deployments /roles/my.role
     /opt/my-1-0-rc/bin/starting-deployments /roles/my.role
     Busted!
@@ -494,13 +488,15 @@ Failure can occur for the ``ending-deployments`` script:
     yum -y install my-0-1-rc-1.0.0
     INFO yum -q list installed my-0-1-rc
     yum -q list installed my-0-1-rc
+    INFO /opt/my-0-1-rc/bin/starting-deployments /roles/my.role
+    /opt/my-0-1-rc/bin/starting-deployments /roles/my.role
     INFO DEBUG: got deployments
     INFO DEBUG: remove old deployments
     INFO DEBUG: update software
+    INFO yum -y install z4m-5.79.5
+    yum -y install z4m-5.79.5
     INFO yum -q list installed z4m-5.79.5
     yum -q list installed z4m-5.79.5
-    INFO /opt/my-0-1-rc/bin/starting-deployments /roles/my.role
-    /opt/my-0-1-rc/bin/starting-deployments /roles/my.role
     INFO /opt/z4m-5.79.5/bin/zookeeper-deploy /cust/cms 0
     z4m-5.79.5/bin/zookeeper-deploy /cust/cms 0
     INFO /opt/my-0-1-rc/bin/ending-deployments /roles/my.role
@@ -556,6 +552,8 @@ see this in action:
     yum -y install my-0-0-rc-1.0.0
     INFO yum -q list installed my-0-0-rc
     yum -q list installed my-0-0-rc
+    INFO /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
+    /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
     INFO DEBUG: got deployments
     INFO DEBUG: remove old deployments
     INFO DEBUG: update software
@@ -565,8 +563,6 @@ see this in action:
     yum -q list installed cranky
     INFO yum -q list installed z4m-5.79.5
     yum -q list installed z4m-5.79.5
-    INFO /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
-    /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
     INFO /opt/z4m-5.79.5/bin/zookeeper-deploy /cust/cms 0
     z4m-5.79.5/bin/zookeeper-deploy /cust/cms 0
     INFO /opt/cranky/bin/zookeeper-deploy /cust/upset-and 0

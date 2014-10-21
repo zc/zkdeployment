@@ -961,13 +961,13 @@ def test_role_controller_addition():
     yum -y install my-0-0-rc-1.0.0
     INFO yum -q list installed my-0-0-rc
     yum -q list installed my-0-0-rc
+    INFO /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
+    /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
     INFO DEBUG: got deployments
     INFO DEBUG: remove old deployments
     INFO DEBUG: update software
     INFO yum -q list installed z4m
     yum -q list installed z4m
-    INFO /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
-    /opt/my-0-0-rc/bin/starting-deployments /roles/my.role
     INFO /tmp/tmpcwTGRH/TEST_ROOT/opt/z4m/bin/zookeeper-deploy /cust/cms 0
     z4m/bin/zookeeper-deploy /cust/cms 0
     INFO /opt/my-0-0-rc/bin/ending-deployments /roles/my.role
