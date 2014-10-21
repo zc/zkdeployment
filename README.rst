@@ -523,6 +523,14 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.15.0 (2014-10-21)
+-------------------
+
+- Add support for "role controllers" with role-based locking.  A
+  software package can be specified to provide support for deployments
+  of a specific deployment role, in which case at most one machine
+  having that role will be targetted for deployment at a time.
+
 0.14.4 (2014-01-30)
 -------------------
 
