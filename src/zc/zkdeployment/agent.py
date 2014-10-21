@@ -556,14 +556,15 @@ class Agent(object):
 
             logger.info("DEBUG: update software")
 
-            # update app software, if necessary
-            for rpm_package_name, version in sorted(deploy_versions.items()):
-                check_continuing()
-                self.install_something(rpm_package_name, version)
-
             # Now update/install the needed deployments
             with self.role_lock():
                 self.run_role_script('starting-deployments')
+
+                # update app software, if necessary
+                for rpm_pkg_name, version in sorted(deploy_versions.items()):
+                    check_continuing()
+                    self.install_something(rpm_pkg_name, version)
+
                 for deployment in sorted(deployments,
                                          key=lambda d: (d.path, d.n)):
                     with self.node_lock(deployment.path):
