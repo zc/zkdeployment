@@ -523,6 +523,10 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+- Move the role locks used by role controllers to a separate tree; since
+  the locks are persistent rather than ephemeral, they cannot be in a
+  tree that's synced.
+
 0.15.0 (2014-10-21)
 -------------------
 

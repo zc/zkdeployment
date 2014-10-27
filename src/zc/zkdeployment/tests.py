@@ -943,12 +943,13 @@ def test_role_controller_addition():
     ... /roles
     ...   /my.role : my-0-0-rc
     ...      version = '1.0.0'
-    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
     ...      /deploy
     ...        /my.role
+    ... /role-locks
+    ...   /my.role
     ... ''', trim=True)
 
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
