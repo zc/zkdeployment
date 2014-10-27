@@ -523,6 +523,9 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+- Revise the persistent lock to be more efficient with regard to how we
+  watch for our turn.
+
 0.15.0 (2014-10-21)
 -------------------
 

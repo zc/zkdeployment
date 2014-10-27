@@ -654,22 +654,34 @@ class PersistentLock(object):
             value=json.dumps({'requestor': self.hostid,
                               'hostname': self.hostname}),
             sequence=True).rsplit('/', 1)[1]
-        children = self.zk.client.get_children(self.path)
-        for child in sorted(children):
+        children = sorted(self.zk.client.get_children(self.path))
+        for child in children:
             properties = self.zk.properties(prefix + child)
             if properties.get('requestor') == self.hostid:
                 if child != request:
                     self.zk.delete(prefix + request)
+                    children.remove(request)
                 request = child
                 break
         self.request = request
+        if children[:1] == [request]:
+            # Already have the lock.
+            return
+
         event = threading.Event()
 
-        @self.zk.client.ChildrenWatch(self.path)
-        def watch(children):
-            if sorted(children)[:1] == [request]:
+        def watch(event):
+            children = sorted(self.zk.client.get_children(self.path))
+            if children[:1] == [request]:
                 event.set()
-                return False
+            else:
+                ndx = children.index(request)
+                assert ndx
+                self.zk.client.exists(prefix + children[ndx - 1], watch=watch)
+
+        ndx = children.index(request)
+        assert ndx
+        self.zk.client.exists(prefix + children[ndx - 1], watch=watch)
 
         event.wait()
 
