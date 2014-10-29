@@ -30,18 +30,20 @@ Installation management
 -----------------------
 
 Installation of the role controller is configured in the Zookeeper tree
-and managed by the deployment agent.
+and managed by the deployment agent.  Note that we're creating the lock
+node in this import as well; we'll discuss this later.
 
     >>> zk.import_tree('''
     ... /roles
     ...   /my.role : my-0-0-rc
     ...      version = '1.0.0'
-    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
     ...      /deploy
     ...        /my.role
+    ... /role-locks
+    ...   /my.role
     ... ''', trim=True)
 
     >>> agent = zc.zkdeployment.agent.Agent()
@@ -78,7 +80,6 @@ updated before any deployments are performed:
     ... /roles
     ...   /my.role : my-0-0-rc
     ...      version = '1.0.1'
-    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
@@ -118,7 +119,6 @@ Downgrading the role controller works as expected:
     ... /roles
     ...   /my.role : my-0-0-rc
     ...      version = '1.0.0'
-    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
@@ -162,7 +162,6 @@ Switching to a different controller entirely also works:
     ... /roles
     ...   /my.role : your-0-0-rc
     ...      version = '1.0.0'
-    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
@@ -203,7 +202,6 @@ Role controllers can be installed from version control like other software:
     ... /roles
     ...   /my.role : your-0-0-rc
     ...      version = 'git:git@bitbucket.org:zc/your-rc.git#master'
-    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
@@ -247,7 +245,6 @@ Changing the version control URI causes the installation to be replaced:
     ... /roles
     ...   /my.role : your-0-0-rc
     ...      version = 'git:git@bitbucket.org:zc/your-rc.git#my-branch'
-    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
@@ -289,7 +286,6 @@ this host will be completed:
     ...   # node to be simulated:
     ...   /my.role : your-cf-0-0-rc
     ...      version = '1.0.0'
-    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
@@ -321,10 +317,10 @@ this host will be completed:
     /opt/your-cf-0-0-rc/bin/ending-deployments /roles/my.role
     INFO Done deploying version 7.2.1
 
-The role's ``lock`` node must exist; an error will triggered if it does
+The role's lock node must exist; an error will triggered if it does
 not:
 
-    >>> _ = zk.delete('/roles/my.role/lock')
+    >>> _ = zk.delete('/role-locks/my.role')
     >>> zk.properties('/hosts').update(version='7.3'); time.sleep(.5)
     INFO ============================================================
     INFO Deploying version 7.3
@@ -336,7 +332,7 @@ not:
     ERROR deploying
     Traceback (most recent call last):
       ...
-    RuntimeError: role lock node '/roles/my.role/lock' must exist
+    RuntimeError: role lock node '/role-locks/my.role' must exist
     CRITICAL FAILED deploying version 7.3
 
 We can even remove the role configuration to switch back to a
@@ -379,12 +375,13 @@ deployments:
     ... /roles
     ...   /my.role : my-0-0-rc
     ...      version = '666'
-    ...      /lock
     ... /cust
     ...   /cms : z4m
     ...      version = u'0.9.0'
     ...      /deploy
     ...        /my.role
+    ... /role-locks
+    ...   /my.role
     ... ''', trim=True)
 
     >>> zk.properties('/hosts').update(version=8); time.sleep(.5)
@@ -423,7 +420,6 @@ Failure can occur for the ``starting-deployments`` script:
     ... /roles
     ...   /my.role : my-1-0-rc
     ...      version = '1.0.0'
-    ...      /lock
     ... /cust
     ...   /cms : z4m-5.79.5
     ...      /deploy
@@ -468,7 +464,6 @@ Failure can occur for the ``ending-deployments`` script:
     ... /roles
     ...   /my.role : my-0-1-rc
     ...      version = '1.0.0'
-    ...      /lock
     ... /cust
     ...   /cms : z4m-5.79.5
     ...      /deploy
@@ -528,7 +523,6 @@ see this in action:
     ... /roles
     ...   /my.role : my-0-0-rc
     ...      version = '1.0.0'
-    ...      /lock
     ... /cust
     ...   /cms : z4m-5.79.5
     ...      /deploy

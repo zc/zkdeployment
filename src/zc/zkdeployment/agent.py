@@ -457,7 +457,7 @@ class Agent(object):
 
     def role_lock(self):
         if self.role_controller:
-            return PersistentLock(self.zk, '/roles/%s/lock' % self.role,
+            return PersistentLock(self.zk, '/role-locks/%s' % self.role,
                                   self.host_name, self.host_identifier)
         else:
             return dummy_lock()
