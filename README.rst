@@ -523,6 +523,9 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+- Decreased the monitor interval to 2 minutes.
+
+
 0.16.0 (2014-10-29)
 -------------------
 

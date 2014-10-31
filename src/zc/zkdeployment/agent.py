@@ -691,7 +691,7 @@ class Monitor(object):
         self.agent = agent
         self.uri = '/zkdeploy/agent'
         self.manager_uri = '/managers/zkdeploymanager'
-        self.interval = 300
+        self.interval = 120
         self.last_good_time = time.time()
         self._state = 'INFO'
 

@@ -1309,7 +1309,7 @@ sending an event.
     /zkdeploy/agent
     INFO
     ANNOUNCE: managing
-    {"interval": 300, "uris": ["/zkdeploy/agent"]}
+    {"interval": 120, "uris": ["/zkdeploy/agent"]}
 
 Every interval, the monitor will send a heartbeat announcing its state.  When
 everything's in working order (when the cluster version and the host version
@@ -1455,7 +1455,7 @@ a 'unmanaging' event.
     /zkdeploy/agent
     INFO
     ANNOUNCE: unmanaging
-    {"interval": 300, "uris": ["/zkdeploy/agent"]}
+    {"interval": 120, "uris": ["/zkdeploy/agent"]}
 
 It also shuts down the agent:
 
@@ -1480,14 +1480,14 @@ send_state call:
     /zkdeploy/agent
     INFO
     ANNOUNCE: managing
-    {"interval": 300, "uris": ["/zkdeploy/agent"]}
+    {"interval": 120, "uris": ["/zkdeploy/agent"]}
     /managers/zkdeploymanager
     INFO
     Running
     /zkdeploy/agent
     INFO
     ANNOUNCE: unmanaging
-    {"interval": 300, "uris": ["/zkdeploy/agent"]}
+    {"interval": 120, "uris": ["/zkdeploy/agent"]}
 
     >>> agent.zk.client.state
     'LOST'
@@ -1517,14 +1517,14 @@ sys.exit() in our signal handler, since the run loop won't terminate otherwise:
     /zkdeploy/agent
     INFO
     ANNOUNCE: managing
-    {"interval": 300, "uris": ["/zkdeploy/agent"]}
+    {"interval": 120, "uris": ["/zkdeploy/agent"]}
     /managers/zkdeploymanager
     INFO
     Running
     /zkdeploy/agent
     INFO
     ANNOUNCE: unmanaging
-    {"interval": 300, "uris": ["/zkdeploy/agent"]}
+    {"interval": 120, "uris": ["/zkdeploy/agent"]}
     sys.exit() called
 
 
