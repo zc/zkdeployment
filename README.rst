@@ -523,6 +523,8 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+- Include bin/zdaemon in the RPM.
+
 - Decreased the monitor interval to 2 minutes.
 
 
