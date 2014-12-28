@@ -147,6 +147,23 @@ installation script for everything that's installed:
     yum -y remove z4mmonitor
     INFO Done deploying version 2
 
+The agent created a status file.
+
+    >>> def assert_(cond):
+    ...     if not cond:
+    ...         raise AssertionError
+    >>> import os
+    >>> def read_status():
+    ...     with open('etc/zim/status') as f:
+    ...         t, pid, version, status = f.read().strip().split(None, 3)
+    ...         assert_(pid == str(os.getpid()))
+    ...         t = float(t)
+    ...         assert_(t <= time.time() and t > time.time()-99)
+    ...     print version, status
+
+    >>> read_status()
+    2 done
+
 '424242424242' now reports itself as being on version 2 for all of its
 deployments.
 
@@ -418,6 +435,9 @@ We will get an error.
     ...
     ValueError: Inconsistent versions for z4m. u'3.0.0' != u'2.0.0'
     CRITICAL FAILED deploying version 8
+
+    >>> read_status()
+    8 error
 
 We realize that z4m needs to be installed differently.  We can't
 update z4m installations in place, because the application reads
