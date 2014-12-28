@@ -1,0 +1,118 @@
+Agent monitor
+=============
+
+Deployment agents have a number of failure modes that we need to monitor for:
+
+- Errors during deployment
+
+- agent process deaths
+
+- hangs (possibly not so much since getting ZooKeeper interactions
+  under control).
+
+The monitor will seek to detect these failures through the use of a
+status file produced by the agent. The status file is essentially a
+one-record log file of agent activity.  It contains:
+
+- time (seconds since epoch)
+
+- Pid
+
+- Version
+
+- Status
+
+Where the the version is the version being installed or most recently deployed.
+
+Status is either "done", "error ...", or some string that represents
+some action the agent is waiting for, such as installing an RPM or
+running a deployment script.  The status may contain spaces.
+
+The agent is considered healthy if:
+
+- The file indicates a status of "done" and a version equal to the
+  cluster version, or
+
+- The the status is not error, and the file is younger than some threshold.
+
+The monitor is available as an entry point:
+
+    >>> import pkg_resources
+    >>> monitor = pkg_resources.load_entry_point(
+    ...         "zc.zkdeployment", "console_scripts", 'monitor')
+
+The monitor is passed the name of a status file.  It accepts options:
+
+--warn, -w
+  Warning age threshold, in seconds, defaulting to 200
+
+--error, -e
+  Error age threshold, in seconds, defaulting to 600
+
+--zookeeper, -z
+  A Zookeeper connection string, defaulting to zookeeper:2181
+
+To create a status file, we'll use a helper function, since we'll be
+doing this a lot:
+
+    >>> import time
+    >>> def status(version, status, t=None):
+    ...     with open('status', 'w') as f:
+    ...         f.write("%s 42 %s %s\n" % (t or time.time(), version, status))
+
+    >>> status(1, 'done')
+
+Let's run the monitor:
+
+    >>> monitor(['status'])
+    done
+
+Is the status shows an error:
+
+    >>> status(1, 'error')
+    >>> monitor(['status'])
+    Error deploying 1
+    2
+
+If it shows some other status:
+
+    >>> status(1, 'installing foo')
+    >>> monitor(['status'])
+    installing foo
+
+If it's taking a bit long:
+
+    >>> status(1, 'installing foo', time.time() - 300.1)
+    >>> monitor(['status'])
+    Too long deploying 1 (installing foo) 300 > 200
+    1
+
+Or way too long:
+
+    >>> status(1, 'installing foo', time.time() - 700.1)
+    >>> monitor(['status'])
+    Too long deploying 1 (installing foo) 700 > 600
+    2
+
+Let's play with command-line options:
+
+    >>> monitor(['status', '-zlocalhost'])
+    Traceback (most recent call last):
+    ...
+    FailedConnect: localhost
+
+    >>> monitor(['status', '-w99', '-e999'])
+    Too long deploying 1 (installing foo) 700 > 99
+    1
+
+    >>> monitor(['status', '-w99', '-e199'])
+    Too long deploying 1 (installing foo) 700 > 199
+    2
+
+We error if the state file is missing:
+
+    >>> import os
+    >>> os.remove('status')
+    >>> monitor(['status', '-w99', '-e199'])
+    [Errno 2] No such file or directory: 'status'
+    2
