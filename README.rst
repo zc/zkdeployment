@@ -523,6 +523,9 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+- Replace the zim agent machinery with a simple status file and a
+  nagios monitor that uses it.
+
 0.16.1 (2014-who-knows?)
 ========================
 
