@@ -36,7 +36,6 @@ import traceback
 import unittest
 import zc.zk.testing
 import zc.zkdeployment.agent
-import zim.config # XXX zim duz way too much on import. :( Do it now.
 import zope.component.testing
 import zope.testing.setupstack
 import zope.testing.renormalizing
@@ -572,31 +571,6 @@ And finally, remove, which should clean up the etc dir:
     >>> agent.close()
     """
 
-def monitor_only_with_zimagent():
-    """
-    Normally, with zimagent installed, the agent monitor is started:
-
-    >>> with mock.patch('zc.zkdeployment.agent.Agent') as Agent:
-    ...     with mock.patch('zc.zkdeployment.agent.Monitor') as Monitor:
-    ...         zc.zkdeployment.agent.main([])
-    ...         Agent.assert_called_with(verbose=False, run_once=False)
-    ...         Monitor.assert_called_with(Agent.return_value)
-    ...         Monitor.return_value.run.assert_called_with()
-    ...         assert_(Agent.return_value.monitor_cb is
-    ...                 Monitor.return_value.send_state)
-
-    >>> os.remove(os.path.join('etc', 'init.d', 'zimagent'))
-
-
-    >>> with mock.patch('zc.zkdeployment.agent.Agent') as Agent:
-    ...     with mock.patch('zc.zkdeployment.agent.Monitor') as Monitor:
-    ...         zc.zkdeployment.agent.main([])
-    ...         Agent.assert_called_with(verbose=False, run_once=False)
-    ...         assert_(not Monitor.called)
-    ...         Agent.return_value.run.assert_called_with()
-
-    """
-
 def agent_run():
     """
     >>> import signal
@@ -688,30 +662,6 @@ Then switch to another:
     INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     z4m/bin/zookeeper-deploy /cust/someapp/cms 0
     INFO Done deploying version 3
-
-    """
-
-def monitor_last_good_time():
-    """A Monitor's last_good_time is update when it's state is set to 'INFO'.
-
-    >>> import zc.zkdeployment.agent
-    >>> with mock.patch('time.time', return_value=1):
-    ...     monitor = zc.zkdeployment.agent.Monitor(None)
-    >>> monitor.last_good_time
-    1
-
-    >>> monitor.state = 'CRITICAL'
-    >>> monitor.last_good_time
-    1
-
-    >>> monitor.state = 'WARNING'
-    >>> monitor.last_good_time
-    1
-
-    >>> with mock.patch('time.time', return_value=2):
-    ...     monitor.state = 'INFO'
-    >>> monitor.last_good_time
-    2
 
     """
 

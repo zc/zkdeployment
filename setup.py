@@ -49,7 +49,6 @@ setup(
         'zc.lockfile',
         'zc.thread',
         'zc.zk',
-        'zim.messaging',
         'zope.component',
         'zope.interface',
         ],

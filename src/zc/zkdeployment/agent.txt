@@ -1287,263 +1287,6 @@ Now, remove the deployment again::
     ...
 
 
-Monitoring
-==========
-
-We also provide a monitor for zimagent.  It takes the host agent to be
-monitored as its argument.
-
-    >>> monitor = zc.zkdeployment.agent.Monitor(agent)
-    >>> monitor.agent == agent
-    True
-
-On startup, the monitor registers itself and its URI with the zim master by
-sending an event.
-
-    >>> import zim.messaging
-    >>> def fake_send_event(uri, severity, msg):
-    ...     print uri, severity, msg
-    >>> real_send_event = zim.messaging.send_event
-    >>> zim.messaging.send_event = fake_send_event
-    >>> monitor.startup()
-    /zkdeploy/agent
-    INFO
-    ANNOUNCE: managing
-    {"interval": 120, "uris": ["/zkdeploy/agent"]}
-
-Every interval, the monitor will send a heartbeat announcing its state.  When
-everything's in working order (when the cluster version and the host version
-are equal, it returns an 'ok' state.
-
-    >>> monitor.agent.version == monitor.agent.cluster_version
-    True
-    >>> monitor.send_state()
-    /zkdeploy/agent
-    INFO
-    Host and cluster are in sync
-
-If the host is out of sync with the cluster, we'll get a warning.
-
-    >>> agent.version = 1
-    >>> monitor = zc.zkdeployment.agent.Monitor(agent)
-    >>> monitor.send_state()
-    /zkdeploy/agent
-    WARNING
-    Host and cluster are out of sync (host: 1, cluster: 27)
-
-If we go longer than 15 minutes and the host is still not in sync with the
-cluster, we'll start sending critical events.
-
-    >>> import time
-    >>> monitor = zc.zkdeployment.agent.Monitor(agent)
-    >>> monitor.last_good_time = time.time() - 86400
-    >>> monitor.send_state()
-    /zkdeploy/agent
-    CRITICAL
-    Host and cluster are more than 15 minutes out of sync
-
-If on the other hand, the host has been ok for more than 15 minutes,
-we won't get an error.
-
-    >>> monitor.agent.version = monitor.agent.cluster_version
-    >>> monitor.last_good_time = time.time() - 86400
-    >>> monitor.send_state()
-    /zkdeploy/agent
-    INFO
-    Host and cluster are in sync
-
-
-If we get an exception while deploying, a critical alert will be sent
-
-   >>> monitor = zc.zkdeployment.agent.Monitor(agent)
-
-A simple tree::
-
-  /cust
-    /someapp
-      /cms : z4m
-         version = '2.0.0'
-         /deploy
-            /424242424242
-
-  /cust2
-    /someapp
-      /cms : z4m
-         version = '3.0.0'
-         /deploy
-            /424242424242
-              n = 1
-      /monitor : z4mmonitor
-         version = '1.1.0'
-         /deploy
-            /424242424242
-
-.. -> tree
-
-    >>> zk.import_tree(tree, trim=True)
-
-We will get an error.
-
-    >>> bump_version() # doctest: +ELLIPSIS
-    INFO ============================================================
-    INFO Deploying version 28
-    ERROR deploying
-    Traceback (most recent call last):
-    ...
-    ValueError: Found a host-based deployment at /cust/someapp/cms/deploy/424242424242 but the host has a role, cache.
-    CRITICAL FAILED deploying version 28
-
-   >>> monitor.send_state()
-    /zkdeploy/agent
-    CRITICAL
-    Host exception on deploy()
-
-If the next deployment succeeds, the monitor will turn green::
-
-  /cust
-    /someapp
-      /cache : squid
-        version = '2.0'
-        /deploy
-          /cache
-      /rewriter : pywrite
-        version = 'svn+ssh://svn.zope.com/repos/main/pywrite/trunk'
-        /deploy
-  /cust2
-    /someapp
-      /cache : squid
-        version = '2.0'
-        /deploy
-          /cache
-
-.. -> tree
-
-    >>> zk.import_tree(tree, trim=True)
-
-When we send our state, we'll get an INFO message:
-
-    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-    INFO ============================================================
-    INFO Deploying version 29
-    INFO yum -q list installed squid
-    yum -q list installed squid
-    INFO /opt/squid/bin/zookeeper-deploy /cust/someapp/cache 0
-    squid/bin/zookeeper-deploy /cust/someapp/cache 0
-    INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO Done deploying version 29
-
-    >>> monitor.send_state()
-    /zkdeploy/agent
-    INFO
-    Host and cluster are in sync
-
-
-The monitor needs to report presence periodically:
-
-
-    >>> monitor.report_presence()
-    /managers/zkdeploymanager
-    INFO
-    Running
-
-
-On shutdown, the monitor unregisters its URI with the zim master by sending
-a 'unmanaging' event.
-
-    >>> monitor.shutdown()
-    /zkdeploy/agent
-    INFO
-    ANNOUNCE: unmanaging
-    {"interval": 120, "uris": ["/zkdeploy/agent"]}
-
-It also shuts down the agent:
-
-    >>> agent.zk.client.state
-    'LOST'
-
-Once the monitor exists, you can start its periodic sending of zim events with
-the `run` method.  `run` will first send a `managing` announcement, followed by
-periodic presence and status announcements.  When it gets a SIGTERM or
-KeyboardInterrupt, it will unregister itself from zim and shut down.
-
-Here, we'll see what happens when we give it a KeyboardInterrupt during the
-send_state call:
-
-    >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(wait)
-    INFO Agent starting, cluster 29, host 29
-    >>> with mock.patch.object(
-    ...         zc.zkdeployment.agent.Monitor, 'send_state') as mocked_send_state:
-    ...     mocked_send_state.side_effect = KeyboardInterrupt
-    ...     monitor = zc.zkdeployment.agent.Monitor(agent)
-    ...     monitor.run()
-    /zkdeploy/agent
-    INFO
-    ANNOUNCE: managing
-    {"interval": 120, "uris": ["/zkdeploy/agent"]}
-    /managers/zkdeploymanager
-    INFO
-    Running
-    /zkdeploy/agent
-    INFO
-    ANNOUNCE: unmanaging
-    {"interval": 120, "uris": ["/zkdeploy/agent"]}
-
-    >>> agent.zk.client.state
-    'LOST'
-
-The monitor successfully unregistered itself.
-
-The same will happen when we send a SIGTERM signal.  Note that we manually call
-sys.exit() in our signal handler, since the run loop won't terminate otherwise:
-
-    >>> import signal
-    >>> def send_sigterm():
-    ...     os.kill(os.getpid(), signal.SIGTERM)
-    >>> class SysExit(Exception):
-    ...     pass
-    >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(wait)
-    INFO Agent starting, cluster 29, host 29
-    >>> with mock.patch.object(
-    ...         zc.zkdeployment.agent.Monitor, 'send_state') as mocked_send_state:
-    ...     mocked_send_state.side_effect = send_sigterm
-    ...     monitor = zc.zkdeployment.agent.Monitor(agent)
-    ...     with mock.patch('sys.exit') as mocked_exit:
-    ...         mocked_exit.side_effect = SysExit
-    ...         try:
-    ...             monitor.run()
-    ...         except SysExit:
-    ...             print "sys.exit() called"
-    /zkdeploy/agent
-    INFO
-    ANNOUNCE: managing
-    {"interval": 120, "uris": ["/zkdeploy/agent"]}
-    /managers/zkdeploymanager
-    INFO
-    Running
-    /zkdeploy/agent
-    INFO
-    ANNOUNCE: unmanaging
-    {"interval": 120, "uris": ["/zkdeploy/agent"]}
-    sys.exit() called
-
-
-Let's restart the agent:
-
-    >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(wait)
-    INFO Agent starting, cluster 29, host 29
-
-    >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-    INFO ============================================================
-    INFO Deploying version 30
-    INFO yum -q list installed squid
-    yum -q list installed squid
-    INFO /opt/squid/bin/zookeeper-deploy /cust/someapp/cache 0
-    squid/bin/zookeeper-deploy /cust/someapp/cache 0
-    INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    squid/bin/zookeeper-deploy /cust2/someapp/cache 0
-    INFO Done deploying version 30
-
 Handling missing /etc/APP directories
 =====================================
 
@@ -1557,7 +1300,7 @@ To illustrate, we'll create a bogus application in /opt:
     ...      'w').close()
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
-    INFO Deploying version 31
+    INFO Deploying version 28
     INFO yum -q list installed squid
     yum -q list installed squid
     INFO /opt/squid/bin/zookeeper-deploy /cust/someapp/cache 0
@@ -1565,7 +1308,7 @@ To illustrate, we'll create a bogus application in /opt:
     INFO /opt/squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy /cust2/someapp/cache 0
     INFO Removing checkout badapp
-    INFO Done deploying version 31
+    INFO Done deploying version 28
 
 Handling legacy zk databases:
 
@@ -1582,7 +1325,7 @@ emphemeral node::
 
     >>> zk.import_tree(tree, trim=True)
     >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(wait)
-    INFO Agent starting, cluster 1, host 31
+    INFO Agent starting, cluster 1, host 28
     INFO ============================================================
     INFO Deploying version 1
     INFO yum -q list installed squid
@@ -1634,7 +1377,7 @@ of zero, so we need to check after the install that it really happened.
     INFO Agent starting, cluster 1, host 1
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
-    INFO Deploying version 32
+    INFO Deploying version 29
     INFO /opt/squid/bin/zookeeper-deploy -u /cust2/someapp/cache 0
     squid/bin/zookeeper-deploy -u /cust2/someapp/cache 0
     INFO yum -q list installed squid
@@ -1653,7 +1396,7 @@ of zero, so we need to check after the install that it really happened.
     Traceback (most recent call last):
     ...
     SystemError: Failed to install squid-666 (installed: 2.0)
-    CRITICAL FAILED deploying version 32
+    CRITICAL FAILED deploying version 29
 
 ::
 
@@ -1670,7 +1413,7 @@ of zero, so we need to check after the install that it really happened.
     >>> zk.import_tree(tree, trim=True)
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
-    INFO Deploying version 33
+    INFO Deploying version 30
     INFO /opt/squid/bin/zookeeper-deploy -u /cust/someapp/cache 0
     squid/bin/zookeeper-deploy -u /cust/someapp/cache 0
     INFO yum -y clean all
@@ -1681,7 +1424,7 @@ of zero, so we need to check after the install that it really happened.
     Traceback (most recent call last):
     ...
     SystemError: Failed to install varnish-666 (installed: None)
-    CRITICAL FAILED deploying version 33
+    CRITICAL FAILED deploying version 30
 
 
 Sub-tyoes (alternate recipes)
@@ -1704,7 +1447,7 @@ This causes a -r option to be passed to the zookeeper-deploy script.
 
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
-    INFO Deploying version 34
+    INFO Deploying version 31
     INFO yum -y clean all
     yum -y clean all
     INFO yum -y install varnish-1
@@ -1715,7 +1458,7 @@ This causes a -r option to be passed to the zookeeper-deploy script.
     varnish/bin/zookeeper-deploy -r special /cust/someapp/cache 0
     INFO yum -y remove squid
     yum -y remove squid
-    INFO Done deploying version 34
+    INFO Done deploying version 31
 
 Let's make sure uninstalling works too::
 
@@ -1727,12 +1470,12 @@ Let's make sure uninstalling works too::
     >>> zk.import_tree(tree, trim=True)
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================
-    INFO Deploying version 35
+    INFO Deploying version 32
     INFO /opt/varnish/bin/zookeeper-deploy -u /cust/someapp/cache 0
     varnish/bin/zookeeper-deploy -u /cust/someapp/cache 0
     INFO yum -y remove varnish
     yum -y remove varnish
-    INFO Done deploying version 35
+    INFO Done deploying version 32
 
 String versions
 ===============
@@ -1769,7 +1512,6 @@ can cause the update to be propagated on the next sync by setting the
 .. tear down
 
     >>> patcher.stop()
-    >>> zim.messaging.send_event = real_send_event
 
 
 .. [#testroot] To make testing easier, the applications in this
