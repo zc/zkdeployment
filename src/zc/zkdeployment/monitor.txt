@@ -67,7 +67,7 @@ Let's run the monitor:
     >>> monitor(['status'])
     done
 
-Is the status shows an error:
+If the status shows an error:
 
     >>> status(1, 'error')
     >>> monitor(['status'])
