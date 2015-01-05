@@ -11,7 +11,6 @@ import Queue
 import re
 import shutil
 import signal
-import simplejson
 import socket
 import sys
 import threading
@@ -19,15 +18,14 @@ import time
 import zc.thread
 import zc.zk
 import zc.zkdeployment
-import zim.messaging
 import zope.component
 
 parser = optparse.OptionParser()
 parser.add_option(
-    '--verbose', '-v', dest='verbose', action='store_true', default=False,
+    '--verbose', '-v', action='store_true', default=False,
     help='Log all output')
 parser.add_option(
-    '--run-once', '-1', dest='run_once', action='store_true',
+    '--run-once', '-1', action='store_true',
     default=False, help='Run one deployment, and then exit')
 parser.add_option(
     '--assert-zookeeper-address', '-z',
@@ -39,10 +37,9 @@ parser.add_option(
 DONT_CARE = object()
 
 PXEMAC_LOCATION = 'etc/zmh/pxemac'
-
 ROLE_LOCATION = 'etc/zim/role'
-
 VERSION_LOCATION = 'etc/zim/host_version'
+STATUS_LOCATION = 'etc/zim/status'
 
 ZK_LOCATION = 'zookeeper:2181'
 
@@ -69,8 +66,7 @@ def name2path(name):
 
 class Agent(object):
 
-    def __init__(self, monitor_cb=None, verbose=False, run_once=False):
-        self.monitor_cb = monitor_cb
+    def __init__(self, verbose=False, run_once=False):
         self.verbose = verbose
         self.root = os.getenv('TEST_ROOT', '/')
         with open(os.path.join(self.root, PXEMAC_LOCATION), 'r') as fi:
@@ -489,9 +485,16 @@ class Agent(object):
                 self.host_properties.set(props)
 
             if cluster_version == self.version:
+                if not os.path.exists(STATUS_LOCATION):
+                    self.save_status(self.version, 'done')
                 return # Nothing's changed
             logger.info('=' * 60)
             logger.info('Deploying version ' + str(cluster_version))
+
+            def status(message):
+                self.save_status(cluster_version, message)
+
+            status('deploying')
 
             self.clean = False
             self.update_role_controller()
@@ -507,7 +510,7 @@ class Agent(object):
             finally:
                 signal.alarm(0)
 
-            logger.info("DEBUG: got deployments")
+            status('got deployments')
 
             ############################################################
             # Gather versions to deploy, checking for conflicts.  Note
@@ -543,7 +546,7 @@ class Agent(object):
             #
             ############################################################
 
-            logger.info("DEBUG: remove old deployments")
+            status('remove old deployments')
 
             # Remove installed deployments that aren't in zk
             installed_apps = set()
@@ -552,17 +555,20 @@ class Agent(object):
                 installed_apps.add(deployment.app)
                 if ((deployment.app, deployment.path, deployment.n)
                     not in to_deploy):
+                    status('remove %s' % (deployment, ))
                     self.remove_deployment(deployment)
 
-            logger.info("DEBUG: update software")
+            status("update software")
 
             # Now update/install the needed deployments
             with self.role_lock():
+                status('role start script')
                 self.run_role_script('starting-deployments')
 
                 # update app software, if necessary
                 for rpm_pkg_name, version in sorted(deploy_versions.items()):
                     check_continuing()
+                    status("installing %s %s" % (rpm_pkg_name, version))
                     self.install_something(rpm_pkg_name, version)
 
                 for deployment in sorted(deployments,
@@ -574,6 +580,7 @@ class Agent(object):
                         check_continuing()
 
                         try:
+                            status("deploying %s" % (deployment, ))
                             self.install_deployment(deployment)
                         except:
                             # We errored deploying.  We don't want the
@@ -583,6 +590,7 @@ class Agent(object):
                             # as well to handle other failures.
                             self.hosts_properties.update(version=None)
                             raise
+                status('role end script')
                 self.run_role_script('ending-deployments')
 
             # Uninstall software we don't have any more:
@@ -590,6 +598,7 @@ class Agent(object):
                 self.get_installed_applications() -
                 set(deployment.rpm_name for deployment in deployments)
                 ):
+                status("uninstalling %s" % rpm_name)
                 self.uninstall_something(rpm_name)
 
             # remove etc directories we don't need any moe
@@ -614,12 +623,11 @@ class Agent(object):
             self.host_properties.update(error=str(sys.exc_info()[1]))
             logger.exception('deploying')
             logger.critical('FAILED deploying version %s', cluster_version)
+            status('error')
             self.failing = True
-
-            if self.monitor_cb:
-                self.monitor_cb()
         else:
             logger.info('Done deploying version %s', cluster_version)
+            status('done')
             self.failing = False
 
     def run(self):
@@ -628,6 +636,11 @@ class Agent(object):
             sys.exit(0)
         signal.signal(signal.SIGTERM, handle_signal)
         signallableblock()
+
+    def save_status(self, version, status):
+        data = "%s %s %s %s" % (time.time(), os.getpid(), version, status)
+        with open(STATUS_LOCATION, 'w') as f:
+            f.write(data)
 
 
 @contextlib.contextmanager
@@ -685,79 +698,6 @@ def signallableblock():
     while 1:
         time.sleep(99999)
 
-class Monitor(object):
-
-    def __init__(self, agent):
-        self.agent = agent
-        self.uri = '/zkdeploy/agent'
-        self.manager_uri = '/managers/zkdeploymanager'
-        self.interval = 120
-        self.last_good_time = time.time()
-        self._state = 'INFO'
-
-
-    def run(self):
-
-        def handle_signal(signum, frame):
-            self.shutdown()
-            sys.exit(0)
-
-        signal.signal(signal.SIGTERM, handle_signal)
-
-        try:
-            self.startup()
-            while True:
-                self.report_presence()
-                self.send_state()
-                time.sleep(self.interval)
-        except KeyboardInterrupt:
-            self.shutdown()
-
-    def startup(self):
-        self.state = 'INFO'
-        uris = [self.uri]
-        body = simplejson.dumps({'interval': self.interval, 'uris': uris})
-        msg= 'ANNOUNCE: managing ' +  body
-        zim.messaging.send_event(self.uri, self.state, msg)
-
-    def report_presence(self):
-        zim.messaging.send_event(self.manager_uri, 'INFO', 'Running')
-
-    def send_state(self):
-        if self.agent.failing:
-            self.state = 'CRITICAL'
-            msg = 'Host exception on deploy()'
-        elif (time.time() - self.last_good_time > 900
-              and self.agent.version != self.agent.cluster_version):
-            self.state = 'CRITICAL'
-            msg = 'Host and cluster are more than 15 minutes out of sync'
-        elif self.agent.version == self.agent.cluster_version:
-            self.state = 'INFO'
-            msg = 'Host and cluster are in sync'
-        else:
-            self.state = 'WARNING'
-            msg = ('Host and cluster are out of sync (host: %s, cluster: %s)' %
-                (self.agent.version, self.agent.cluster_version))
-        zim.messaging.send_event(self.uri, self.state, msg)
-
-    @property
-    def state(self):
-        return self._state
-
-    @state.setter
-    def state(self, val):
-        if val == 'INFO':
-            self.last_good_time = time.time()
-        self._state = val
-
-    def shutdown(self):
-        self.agent.close()
-        self.state = 'INFO'
-        uris = [self.uri]
-        body = simplejson.dumps({'interval': self.interval, 'uris': uris})
-        msg= 'ANNOUNCE: unmanaging ' +  body
-        zim.messaging.send_event(self.uri, self.state, msg)
-
 def register():
     import zc.zkdeployment.git, zc.zkdeployment.svn
     zc.zkdeployment.git.register()
@@ -786,16 +726,8 @@ def main(args=None):
     ZK_LOCATION = 'zookeeper:2181'
 
     agent = Agent(verbose=options.verbose, run_once=options.run_once)
-    try:
-        if os.path.exists(
-            os.path.join(
-                os.getenv('TEST_ROOT', '/'),'etc', 'init.d', 'zimagent')
-            ):
-            monitor = Monitor(agent)
-            if not options.run_once:
-                agent.monitor_cb = monitor.send_state
-                monitor.run()
-        else:
+    if not options.run_once:
+        try:
             agent.run()
-    finally:
-        agent.close()
+        finally:
+            agent.close()
