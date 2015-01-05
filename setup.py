@@ -45,7 +45,6 @@ setup(
     package_dir = {'': 'src'},
     install_requires = [
         'setuptools',
-        'simplejson',
         'zc.lockfile',
         'zc.thread',
         'zc.zk',

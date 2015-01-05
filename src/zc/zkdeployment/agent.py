@@ -11,7 +11,6 @@ import Queue
 import re
 import shutil
 import signal
-import simplejson
 import socket
 import sys
 import threading
