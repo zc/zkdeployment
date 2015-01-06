@@ -523,6 +523,9 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+- Fix computation of root-relative paths.
+
+
 0.17.0 (2015-01-06)
 ===================
 
