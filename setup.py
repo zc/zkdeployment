@@ -23,6 +23,7 @@ entry_points = """
 [console_scripts]
 agent = zc.zkdeployment.agent:main
 sync = zc.zkdeployment.sync:main
+monitor = zc.zkdeployment.monitor:main
 [zc.buildout]
 default = zc.zkdeployment.tests:TestRecipe
 """
@@ -44,11 +45,9 @@ setup(
     package_dir = {'': 'src'},
     install_requires = [
         'setuptools',
-        'simplejson',
         'zc.lockfile',
         'zc.thread',
         'zc.zk',
-        'zim.messaging',
         'zope.component',
         'zope.interface',
         ],

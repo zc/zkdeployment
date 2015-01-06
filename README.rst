@@ -523,8 +523,14 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.17.0 (2015-01-06)
+===================
+
+- Replace the zim agent machinery with a simple status file and a
+  nagios monitor that uses it.
+
 0.16.1 (2014-11-12)
--------------------
+========================
 
 - Include bin/zdaemon in the RPM.
 
