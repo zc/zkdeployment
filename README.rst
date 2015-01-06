@@ -523,7 +523,15 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.17.2 (2015-01-06)
+===================
+
 - Fix computation of root-relative paths.
+
+0.17.1 (2015-01-06)
+===================
+
+broken yum
 
 
 0.17.0 (2015-01-06)
