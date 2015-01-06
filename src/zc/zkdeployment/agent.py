@@ -69,11 +69,11 @@ class Agent(object):
     def __init__(self, verbose=False, run_once=False):
         self.verbose = verbose
         self.root = os.getenv('TEST_ROOT', '/')
-        with open(os.path.join(self.root, PXEMAC_LOCATION), 'r') as fi:
+        with open(self._path(PXEMAC_LOCATION), 'r') as fi:
             self.host_identifier = fi.readline().strip()
 
-        if os.path.exists(os.path.join(self.root, VERSION_LOCATION)):
-            with open(os.path.join(self.root, VERSION_LOCATION), 'r') as fi:
+        if os.path.exists(self._path(VERSION_LOCATION)):
+            with open(self._path(VERSION_LOCATION), 'r') as fi:
                 version = json.loads(fi.readline().strip())
         else:
             version = None
@@ -209,9 +209,8 @@ class Agent(object):
                 yield Deployment(app, subtype, version, rpm_name, path, i)
 
     def get_installed_deployments(self):
-        for rpm_name in os.listdir(os.path.join(self.root, 'opt')):
-            script = os.path.join(
-                self.root, 'opt', rpm_name, 'bin', 'zookeeper-deploy')
+        for rpm_name in os.listdir(self._path('opt')):
+            script = self._path('opt', rpm_name, 'bin', 'zookeeper-deploy')
             if not os.path.exists(script):
                 continue
 
@@ -219,7 +218,7 @@ class Agent(object):
                 app = versioned_app(rpm_name).group(1)
             else:
                 app = rpm_name
-            etcpath = os.path.join(self.root, 'etc', app)
+            etcpath = self._path('etc', app)
             if not os.path.isdir(etcpath):
                 continue
 
@@ -485,7 +484,7 @@ class Agent(object):
                 self.host_properties.set(props)
 
             if cluster_version == self.version:
-                if not os.path.exists(STATUS_LOCATION):
+                if not os.path.exists(self._path(STATUS_LOCATION)):
                     self.save_status(self.version, 'done')
                 return # Nothing's changed
             logger.info('=' * 60)
@@ -612,7 +611,7 @@ class Agent(object):
 
             self.version = cluster_version
             self.host_properties['version'] = cluster_version
-            with open(os.path.join(self.root, VERSION_LOCATION), 'w') as fi:
+            with open(self._path(VERSION_LOCATION), 'w') as fi:
                 fi.write(json.dumps(cluster_version))
 
         except Abandon:
@@ -639,7 +638,7 @@ class Agent(object):
 
     def save_status(self, version, status):
         data = "%s %s %s %s" % (time.time(), os.getpid(), version, status)
-        with open(STATUS_LOCATION, 'w') as f:
+        with open(self._path(STATUS_LOCATION), 'w') as f:
             f.write(data)
 
 
