@@ -43,6 +43,7 @@ def main(args=None):
     args = parser.parse_args(args)
     zk = zc.zk.ZK(args.zookeeper)
     zkversion = zk.properties('/hosts', False).get('version')
+    zk.close()
     if zkversion is None:
         return warn('Cluster version is None')
     try:

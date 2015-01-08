@@ -523,6 +523,12 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+0.17.3 (2015-01-08)
+===================
+
+Fixed: monitor didn't close its ZooKeeper connection when done with
+       it, leading to spurious errors on exit.
+
 0.17.2 (2015-01-06)
 ===================
 
@@ -532,7 +538,6 @@ Changes
 ===================
 
 broken yum
-
 
 0.17.0 (2015-01-06)
 ===================
@@ -546,7 +551,6 @@ broken yum
 - Include bin/zdaemon in the RPM.
 
 - Decreased the monitor interval to 2 minutes.
-
 
 0.16.0 (2014-10-29)
 -------------------
