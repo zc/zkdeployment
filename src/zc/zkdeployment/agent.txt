@@ -19,13 +19,12 @@ Create an agent:
     >>> patcher = mock.patch('subprocess.Popen',
     ...     **{'side_effect': zc.zkdeployment.tests.subprocess_popen})
     >>> _ = patcher.start()
-    >>> agent = zc.zkdeployment.agent.Agent()
+
+The host identifier is passed to the agent constructor:
+
+    >>> agent = zc.zkdeployment.agent.Agent(
+    ...     '424242424242', run_directory)
     INFO Agent starting, cluster 1, host 1
-
-The agent knows its host identifier:
-
-    >>> agent.host_identifier
-    '424242424242'
 
 An agent may also have a role.  We'll say more about that later. This
 one doesn't have one:
@@ -750,17 +749,12 @@ add a cache server config::
 
     >>> zk.import_tree(tree, trim=True)
 
-and give the host a role:
-
-    >>> import os
-    >>> with open('etc/zim/role', 'w') as f:
-    ...     f.write('cache\n')
-
-The agent reads the role at startup.  We'll close the agent and
-restart it:
+The role is specified in the constructor to the agent.  We'll close the
+agent and restart it:
 
     >>> agent.close()
-    >>> agent = zc.zkdeployment.agent.Agent()
+    >>> agent = zc.zkdeployment.agent.Agent(
+    ...     '424242424242', run_directory, role='cache')
     INFO Agent starting, cluster 14, host 14
     >>> agent.role
     'cache'
@@ -861,7 +855,8 @@ This can be useful when manually running deployments.
 Let's create a new agent, and see that it deploys:
 
     >>> agent.close()
-    >>> agent = zc.zkdeployment.agent.Agent(run_once=True)
+    >>> agent = zc.zkdeployment.agent.Agent(
+    ...     '424242424242', run_directory, run_once=True)
     INFO Agent starting, cluster 17, host 17
 
 If we bump the version, the agent won't do a deployment:
@@ -870,7 +865,8 @@ If we bump the version, the agent won't do a deployment:
 
 Let's switch back to an active agent:
 
-    >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(wait)
+    >>> agent = zc.zkdeployment.agent.Agent(
+    ...     '424242424242', run_directory, role='cache'); time.sleep(wait)
     INFO Agent starting, cluster 18, host 17
     INFO ============================================================
     INFO Deploying version 18
@@ -1094,7 +1090,8 @@ have to be numbers. :)
 
 The agent updates itself to version 19.
 
-    >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(wait)
+    >>> agent = zc.zkdeployment.agent.Agent(
+    ...     '424242424242', run_directory, role='cache'); time.sleep(wait)
     INFO Agent starting, cluster 19, host 21
     INFO ============================================================
     INFO Deploying version 19
@@ -1344,7 +1341,8 @@ emphemeral node::
 .. -> tree
 
     >>> zk.import_tree(tree, trim=True)
-    >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(wait)
+    >>> agent = zc.zkdeployment.agent.Agent(
+    ...     '424242424242', run_directory, role='cache'); time.sleep(wait)
     INFO Agent starting, cluster 1, host 28
     INFO ============================================================
     INFO Deploying version 1
@@ -1393,7 +1391,8 @@ of zero, so we need to check after the install that it really happened.
 
     >>> zk.import_tree(tree, trim=True)
     >>> zk.delete_recursive('/cust2') # XXX Need better way to delete customers
-    >>> agent = zc.zkdeployment.agent.Agent(); time.sleep(wait)
+    >>> agent = zc.zkdeployment.agent.Agent(
+    ...     '424242424242', run_directory, role='cache'); time.sleep(wait)
     INFO Agent starting, cluster 1, host 1
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     INFO ============================================================

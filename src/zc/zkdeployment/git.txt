@@ -21,7 +21,7 @@ Staging with git
     ...     hosts_properties.update(version=version)
     ...     time.sleep(wait)
 
-    >>> agent = zc.zkdeployment.agent.Agent()
+    >>> agent = zc.zkdeployment.agent.Agent('424242424242', run_directory)
     INFO Agent starting, cluster 1, host 1
 
     >>> zk.import_tree('/cust\n/cust2', trim=True)

@@ -98,7 +98,7 @@ initial_file_system = dict(
             version = '1.0.0',
             ),
         )
-)
+    )
 
 def buildfs(tree, base=''):
     for name, value in tree.iteritems():
@@ -389,7 +389,7 @@ def test_legacy_host_entries():
     >>> os.remove(os.path.join('etc', 'zim', 'host_version'))
 
     >>> import zc.zkdeployment.agent
-    >>> agent = zc.zkdeployment.agent.Agent()
+    >>> agent = zc.zkdeployment.agent.Agent('424242424242', run_directory)
     INFO Agent starting, cluster 1, host 1
 
     At this point, the host node we created has been converted to an
@@ -398,7 +398,7 @@ def test_legacy_host_entries():
     In fact, if we try to create another agent, we'll get an error
     because the node exists and is ephemeral:
 
-    >>> zc.zkdeployment.agent.Agent()
+    >>> zc.zkdeployment.agent.Agent('424242424242', run_directory)
     Traceback (most recent call last):
     ...
     ValueError: Another agent is running
@@ -421,7 +421,7 @@ def test_home_impprovement():
     >>> setup_logging()
     >>> os.environ['HOME'] = '/'
     >>> import zc.zkdeployment.agent
-    >>> agent = zc.zkdeployment.agent.Agent()
+    >>> agent = zc.zkdeployment.agent.Agent('424242424242', run_directory)
     WARNING Fixing incorrect home, '/'.
     INFO Agent starting, cluster 1, host 1
 
@@ -437,7 +437,8 @@ def test_non_empty_etc():
     >>> import zc.zkdeployment.agent
     >>> os.remove(os.path.join('etc', 'zim', 'host_version'))
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
-    ...     agent = zc.zkdeployment.agent.Agent(); time.sleep(.50)
+    ...     agent = zc.zkdeployment.agent.Agent('424242424242', run_directory)
+    ...     time.sleep(.50)
     INFO Agent starting, cluster 1, host None
     INFO ============================================================
     INFO Deploying version 1
@@ -501,7 +502,7 @@ We also were cleaning up etc directories when we shouldn't have.
     ...       /deploy
     ...         /424242424242
     ... ''', trim=True)
-    >>> agent = zc.zkdeployment.agent.Agent()
+    >>> agent = zc.zkdeployment.agent.Agent('424242424242', run_directory)
     INFO Agent starting, cluster 1, host 1
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
     ...     zk.properties('/hosts').update(version=2); time.sleep(.50)
@@ -574,7 +575,7 @@ And finally, remove, which should clean up the etc dir:
 def agent_run():
     """
     >>> import signal
-    >>> agent = zc.zkdeployment.agent.Agent()
+    >>> agent = zc.zkdeployment.agent.Agent('424242424242', run_directory)
     >>> agent.zk.client.state
     'CONNECTED'
     >>> with mock.patch('signal.signal'):
@@ -587,7 +588,8 @@ def agent_run():
     ...      except SystemExit: pass
     ...      else: assert_(False)
 
-    The agent's zk connection is closed
+    The agent's zk connection is closed:
+
     >>> agent.zk.client.state
     'LOST'
     """
@@ -609,7 +611,7 @@ Set up with one url:
     ...       /deploy
     ...         /424242424242
     ... ''', trim=True)
-    >>> agent = zc.zkdeployment.agent.Agent()
+    >>> agent = zc.zkdeployment.agent.Agent('424242424242', run_directory)
     INFO Agent starting, cluster 1, host 1
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
     ...     zk.properties('/hosts').update(version=2); time.sleep(.50)
@@ -670,17 +672,24 @@ def assert_zookeeper_address():
     There's a safety belt to make sure zookeeper's address is what you
     think it is (especially for staging).
 
+    We'll need a configuration file for this.
+
+    >>> path = os.path.join(os.environ['TEST_ROOT'], 'zkdeploy.cfg')
+    >>> with open(path, 'w') as f:
+    ...     print >>f, '[zkdeployment]'
+    ...     print >>f, 'host-id = 424242424242'
+    ...     print >>f, 'run-directory =', run_directory
+
     >>> with mock.patch('socket.gethostbyname', side_effect=lambda n: n+'.42'):
     ...     zc.zkdeployment.agent.main([
-    ...         '-z127.0.0.1'])
+    ...         path, '-z127.0.0.1'])
     Traceback (most recent call last):
     ...
     AssertionError: ('Invalid zookeeper address', 'zookeeper.42', '127.0.0.1')
 
     >>> with mock.patch('socket.gethostbyname', side_effect=lambda n: n+'.42'):
     ...     zc.zkdeployment.agent.main([
-    ...         '-zzookeeper.42', '-1'])
-
+    ...         path, '-zzookeeper.42', '-1'])
 
     """
 
@@ -688,7 +697,7 @@ def no_HOME():
     """
     >>> old = os.environ.pop('HOME', None)
     >>> setup_logging()
-    >>> agent = zc.zkdeployment.agent.Agent()
+    >>> agent = zc.zkdeployment.agent.Agent('424242424242', run_directory)
     WARNING Fixing incorrect home, None.
     INFO Agent starting, cluster 1, host 1
 
@@ -711,7 +720,7 @@ def agent_refuse_to_update_to_None():
     ... ''')
 
     >>> import zc.zkdeployment.agent
-    >>> agent = zc.zkdeployment.agent.Agent()
+    >>> agent = zc.zkdeployment.agent.Agent('424242424242', run_directory)
     INFO Agent starting, cluster None, host 1
 
     >>> zk.import_tree('''
@@ -721,7 +730,7 @@ def agent_refuse_to_update_to_None():
     extra path not trimmed: /hosts/424242424242
 
     >>> agent.close()
-    >>> agent = zc.zkdeployment.agent.Agent()
+    >>> agent = zc.zkdeployment.agent.Agent('424242424242', run_directory)
     INFO Agent starting, cluster None, host 1
     """
 
@@ -740,7 +749,7 @@ def agent_bails_on_None():
     ... /hosts
     ...    version = 1
     ... ''', trim=True)
-    >>> agent = zc.zkdeployment.agent.Agent()
+    >>> agent = zc.zkdeployment.agent.Agent('424242424242', run_directory)
     INFO Agent starting, cluster 1, host 1
 
     >>> lock = zk.client.Lock('/agent-locks/app', '42')
@@ -798,7 +807,7 @@ def test_downgrade():
     ...        /424242424242
     ... /cust2
     ... ''', trim=True)
-    >>> agent = zc.zkdeployment.agent.Agent()
+    >>> agent = zc.zkdeployment.agent.Agent('424242424242', run_directory)
     INFO Agent starting, cluster 1, host 1
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
     ...     zk.properties('/hosts').update(version=2); time.sleep(.1)
@@ -839,7 +848,6 @@ def test_downgrade():
 def test_role_controller_addition():
     """
     >>> setup_logging()
-    >>> setup_role('my.role')
 
     Let's start with a traditional installation (no role-controller):
 
@@ -854,7 +862,8 @@ def test_role_controller_addition():
     ... /cust2
     ... ''', trim=True)
 
-    >>> agent = zc.zkdeployment.agent.Agent()
+    >>> agent = zc.zkdeployment.agent.Agent(
+    ...     '4242424242', run_directory, role='my.role')
     INFO Agent starting, cluster 1, host 1
 
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
@@ -979,22 +988,11 @@ def setUp(test, initial_tree=initial_tree,
     os.mkdir('TEST_ROOT')
     os.chdir('TEST_ROOT')
     os.environ['TEST_ROOT'] = os.getcwd()
+    test.globs['run_directory'] = os.path.join(os.getcwd(), "etc/zim")
     zope.testing.setupstack.register(
         test, lambda : zc.zk.testing.tearDown(test))
     buildfs(initial_file_system)
 
-    role_path = os.path.join(os.environ['TEST_ROOT'],
-                             zc.zkdeployment.agent.ROLE_LOCATION)
-
-    def setup_role(role):
-        with open(role_path, 'w') as f:
-            f.write(role)
-
-    def clear_role():
-        if os.path.exists(role_path):
-            os.unlink(role_path)
-
-    zope.testing.setupstack.register(test, clear_role)
     zope.testing.setupstack.context_manager(
         test, mock.patch('socket.getfqdn')
         ).return_value = 'host42'
@@ -1010,7 +1008,6 @@ def setUp(test, initial_tree=initial_tree,
     handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
     logger.setLevel(logging.INFO)
     test.globs['setup_logging'] = lambda : logger.setLevel(logging.INFO)
-    test.globs['setup_role'] = setup_role
 
     zope.testing.setupstack.register(
         test,

@@ -1,11 +1,12 @@
 from zc.zkdeployment.interfaces import IVCS
 
+import ConfigParser
 import collections
 import contextlib
 import json
 import kazoo.exceptions
 import logging
-import optparse
+import argparse
 import os
 import Queue
 import re
@@ -20,26 +21,23 @@ import zc.zk
 import zc.zkdeployment
 import zope.component
 
-parser = optparse.OptionParser()
-parser.add_option(
+parser = argparse.ArgumentParser()
+parser.add_argument(
     '--verbose', '-v', action='store_true', default=False,
     help='Log all output')
-parser.add_option(
+parser.add_argument(
     '--run-once', '-1', action='store_true',
     default=False, help='Run one deployment, and then exit')
-parser.add_option(
+parser.add_argument(
     '--assert-zookeeper-address', '-z',
     help=
     "Assert that the name 'zookeeper' resolves to the given address.\n"
     "This is useful when staging to make sure you don't accidentally connect\n"
     "to a production ZooKeeper server.")
+parser.add_argument(
+    'configuration')
 
 DONT_CARE = object()
-
-PXEMAC_LOCATION = 'etc/zmh/pxemac'
-ROLE_LOCATION = 'etc/zim/role'
-VERSION_LOCATION = 'etc/zim/host_version'
-STATUS_LOCATION = 'etc/zim/status'
 
 ZK_LOCATION = 'zookeeper:2181'
 
@@ -66,14 +64,17 @@ def name2path(name):
 
 class Agent(object):
 
-    def __init__(self, verbose=False, run_once=False):
+    def __init__(self, host_id, run_directory=os.curdir, role=None,
+                 verbose=False, run_once=False):
         self.verbose = verbose
         self.root = os.getenv('TEST_ROOT', '/')
-        with open(self._path(PXEMAC_LOCATION), 'r') as fi:
-            self.host_identifier = fi.readline().strip()
+        self.host_identifier = host_id
+        self.role = role
+        self.status_location = os.path.join(run_directory, 'status')
+        self.version_location = os.path.join(run_directory, 'host_version')
 
-        if os.path.exists(self._path(VERSION_LOCATION)):
-            with open(self._path(VERSION_LOCATION), 'r') as fi:
+        if os.path.exists(self.version_location):
+            with open(self.version_location, 'r') as fi:
                 version = json.loads(fi.readline().strip())
         else:
             version = None
@@ -104,12 +105,8 @@ class Agent(object):
                 version = version,
                 )
 
-            if os.path.exists(self._path(ROLE_LOCATION)):
-                with open(self._path(ROLE_LOCATION)) as f:
-                    self.role = f.read().strip()
+            if self.role:
                 host_properties.update(role=self.role)
-            else:
-                self.role = None
 
             if os.environ.get('HOME') != '/root':
                 logger.warning(
@@ -484,7 +481,7 @@ class Agent(object):
                 self.host_properties.set(props)
 
             if cluster_version == self.version:
-                if not os.path.exists(self._path(STATUS_LOCATION)):
+                if not os.path.exists(self.status_location):
                     self.save_status(self.version, 'done')
                 return # Nothing's changed
             logger.info('=' * 60)
@@ -611,7 +608,7 @@ class Agent(object):
 
             self.version = cluster_version
             self.host_properties['version'] = cluster_version
-            with open(self._path(VERSION_LOCATION), 'w') as fi:
+            with open(self.version_location, 'w') as fi:
                 fi.write(json.dumps(cluster_version))
 
         except Abandon:
@@ -638,7 +635,7 @@ class Agent(object):
 
     def save_status(self, version, status):
         data = "%s %s %s %s" % (time.time(), os.getpid(), version, status)
-        with open(self._path(STATUS_LOCATION), 'w') as f:
+        with open(self.status_location, 'w') as f:
             f.write(data)
 
 
@@ -702,14 +699,39 @@ def register():
     zc.zkdeployment.git.register()
     zc.zkdeployment.svn.register()
 
+def getvalue(value):
+    m = re.match(r"[a-z][-a-z0-9]*:", value)
+    if m is None:
+        return value
+    elif value.startswith("file:///"):
+        # requests doesn't handle this out of the box, 'cuz ???
+        path = value[7:]
+        try:
+            return open(path).read().strip()
+        except IOError as e:
+            if e.errno == errno.ENOENT:
+                return None
+    else:
+        import requests
+        r = requests.get(value)
+        if r.status_code == 404:
+            return None
+        elif r.status_code == 200:
+            return r.text.strip()
+        else:
+            raise ValueError("unexpected response code %s from %s"
+                             % (r.status_code, value))
+
 def main(args=None):
     if args is None:
         args = sys.argv[1:]
 
     register()
 
-    options, args = parser.parse_args(args)
-    assert not args
+    options = parser.parse_args(args)
+    cp = ConfigParser.RawConfigParser()
+    cp.option_xform = str
+    cp.readfp(open(options.configuration))
 
     if (options.assert_zookeeper_address and
         socket.gethostbyname('zookeeper') != options.assert_zookeeper_address
@@ -722,9 +744,16 @@ def main(args=None):
         level=logging.INFO,
         format='%(asctime)s %(name)s %(levelname)s %(message)s'
         )
-    ZK_LOCATION = 'zookeeper:2181'
 
-    agent = Agent(verbose=options.verbose, run_once=options.run_once)
+    host_id = getvalue(cp.get("zkdeployment", "host-id"))
+    run_directory = cp.get("zkdeployment", "run-directory")
+    try:
+        role = getvalue(cp.get("zkdeployment", "role"))
+    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+        role = None
+
+    agent = Agent(host_id, run_directory, role,
+                  verbose=options.verbose, run_once=options.run_once)
     if not options.run_once:
         try:
             agent.run()
