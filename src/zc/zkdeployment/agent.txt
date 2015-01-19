@@ -1388,7 +1388,6 @@ of zero, so we need to check after the install that it really happened.
 
 .. -> tree
 
-
     >>> zk.import_tree(tree, trim=True)
     >>> zk.delete_recursive('/cust2') # XXX Need better way to delete customers
     >>> agent = zc.zkdeployment.agent.Agent(
@@ -1427,7 +1426,6 @@ of zero, so we need to check after the install that it really happened.
           /cache
 
 .. -> tree
-
 
     >>> zk.import_tree(tree, trim=True)
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
