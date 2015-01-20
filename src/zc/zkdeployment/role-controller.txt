@@ -22,7 +22,6 @@ Role controllers do not apply on hosts not associated with a role.
     >>> _ = patcher.start()
 
     >>> setup_logging()
-    >>> setup_role('my.role')
     >>> zk = zc.zk.ZK('zookeeper:2181')
 
 
@@ -46,7 +45,8 @@ node in this import as well; we'll discuss this later.
     ...   /my.role
     ... ''', trim=True)
 
-    >>> agent = zc.zkdeployment.agent.Agent()
+    >>> agent = zc.zkdeployment.agent.Agent(
+    ...     '424242424242', run_directory, 'my.role')
     INFO Agent starting, cluster 1, host 1
 
     >>> zk.properties('/hosts').update(version=3); time.sleep(.5)

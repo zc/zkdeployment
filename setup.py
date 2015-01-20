@@ -44,6 +44,7 @@ setup(
     namespace_packages = name.split('.')[:1],
     package_dir = {'': 'src'},
     install_requires = [
+        'requests',
         'setuptools',
         'zc.lockfile',
         'zc.thread',

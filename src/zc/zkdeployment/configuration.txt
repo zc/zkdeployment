@@ -1,0 +1,228 @@
+===================
+Agent configuration
+===================
+
+The agent's main function handles command line parameters and
+configuration file parsing.  Let's take a look at that in more detail.
+We'll replace the Agent constructor with a helper function to see how
+the constructor parameters are affected by the configuration values.
+
+    >>> import pkg_resources
+    >>> import sys
+    >>> import zc.zkdeployment.agent
+
+    >>> Agent = zc.zkdeployment.agent.Agent
+
+    >>> class FauxAgent(object):
+    ...     run_once = True
+    ...     def close(self):
+    ...         pass
+    ...     def run(self):
+    ...         pass
+
+    >>> def agent_wrapper(host_id, run_directory, role=None,
+    ...                   verbose=False, run_once=False):
+    ...     print "Host id:", host_id
+    ...     print "Run directory:", run_directory
+    ...     print "Role:", role
+    ...     print "Verbose:", verbose
+    ...     print "Run once?", run_once
+    ...     return FauxAgent()
+
+    >>> zc.zkdeployment.agent.Agent = agent_wrapper
+
+    >>> main = pkg_resources.load_entry_point(
+    ...     "zc.zkdeployment", "console_scripts", "agent")
+
+    >>> def run(args):
+    ...     try:
+    ...         main(args)
+    ...     except SystemExit as e:
+    ...         return e.code
+    ...     else:
+    ...         return 0
+
+.. Make sure error output is printed so it can be verified:
+
+    >>> sys.stderr = sys.stdout
+
+Running the main function with ``--help`` causes a help message to be printed:
+
+    >>> rc = run(["--help"])
+    usage: test [-h] [--verbose] [--run-once]
+                [--assert-zookeeper-address ADDRESS]
+                configuration
+    <BLANKLINE>
+    positional arguments:
+      configuration     Path to configuration file.
+    <BLANKLINE>
+    optional arguments:
+      -h, --help        show this help message and exit
+      --verbose, -v     Log all output
+      --run-once, -1    Run one deployment, and then exit
+      --assert-zookeeper-address ADDRESS, -z ADDRESS
+                        Assert that the name 'zookeeper' resolves to the given
+                        address. This is useful when staging to make sure you
+                        don't accidentally connect to a production ZooKeeper
+                        server.
+
+    >>> rc
+    0
+
+Note that the configuration file is required; omitting it from the
+command line causes an error:
+
+    >>> rc = run([])
+    usage: test [-h] [--verbose] [--run-once]
+                [--assert-zookeeper-address ADDRESS]
+                configuration
+    test: error: too few arguments
+
+    >>> rc
+    2
+
+The configuration file is an INI-format file that must contain a
+``zkdeployment`` section with the values for the ``host-id`` and
+``run-directory`` settings.
+
+It's an error for the file not to exist:
+
+    >>> rc = run(["agent.cfg"])
+    Traceback (most recent call last):
+    IOError: [Errno 2] No such file or directory: 'agent.cfg'
+
+    >>> rc
+    2
+
+Let's try something minimal but usable:
+
+    >>> with open("agent.cfg", "w") as f:
+    ...     print >>f, "[zkdeployment]"
+    ...     print >>f, "host-id = app42.example.com"
+    ...     print >>f, "run-directory = /var/run"
+
+    >>> rc = run(["agent.cfg"])
+    Host id: app42.example.com
+    Run directory: /var/run
+    Role: None
+    Verbose: False
+    Run once? False
+
+    >>> rc
+    0
+
+    >>> rc = run(["agent.cfg", "-v1"])
+    Host id: app42.example.com
+    Run directory: /var/run
+    Role: None
+    Verbose: True
+    Run once? True
+
+    >>> rc
+    0
+
+The ``host-id`` setting may actually come from a file managed by another
+system, or even from a HTTP resource (as on an AWS EC2 instance).  If
+the value for the setting is a URL, that resource will be loaded, and
+the value from that (sans leading & trailing whitespace) will be used as
+the host id.
+
+    >>> import os
+
+    >>> with open("my-host-id.txt", "w") as f:
+    ...     print >>f, "app2345"
+
+    >>> with open("agent.cfg", "w") as f:
+    ...     print >>f, "[zkdeployment]"
+    ...     print >>f, "host-id = file://%s/my-host-id.txt" % os.getcwd()
+    ...     print >>f, "run-directory = /var/run"
+
+    >>> rc = run(["agent.cfg"])
+    Host id: app2345
+    Run directory: /var/run
+    Role: None
+    Verbose: False
+    Run once? False
+
+    >>> rc
+    0
+
+Specifying a resource that does not exist is equivalent to omitting the
+value:
+
+    >>> os.unlink("my-host-id.txt")
+
+    >>> rc = run(["agent.cfg"])
+    host-id not specified
+
+    >>> rc
+    2
+
+
+Deployment role
+---------------
+
+The configurations we've looked at so far don't provide a deployment
+role, but this is an important bit of information.  Since not all hosts
+are expected to have a role, it can be omitted from the configuration,
+as we've seen above.
+
+It can also be specified using the ``role`` setting in the configuration
+file:
+
+    >>> with open("agent.cfg", "w") as f:
+    ...     print >>f, "[zkdeployment]"
+    ...     print >>f, "host-id = app42.example.com"
+    ...     print >>f, "run-directory = /var/run"
+    ...     print >>f, "role = stage"
+
+    >>> rc = run(["agent.cfg"])
+    Host id: app42.example.com
+    Run directory: /var/run
+    Role: stage
+    Verbose: False
+    Run once? False
+
+    >>> rc
+    0
+
+The ``role`` setting can also be specified using a reference to an
+external resource:
+
+    >>> with open("what-am-i.txt", "w") as f:
+    ...     print >>f, "customer.appserver"
+
+    >>> with open("agent.cfg", "w") as f:
+    ...     print >>f, "[zkdeployment]"
+    ...     print >>f, "host-id = app42.example.com"
+    ...     print >>f, "run-directory = /var/run"
+    ...     print >>f, "role = file://%s/what-am-i.txt" % os.getcwd()
+
+    >>> rc = run(["agent.cfg"])
+    Host id: app42.example.com
+    Run directory: /var/run
+    Role: customer.appserver
+    Verbose: False
+    Run once? False
+
+    >>> rc
+    0
+
+If the role file doesn't exist, no role is used:
+
+    >>> os.unlink("what-am-i.txt")
+
+    >>> rc = run(["agent.cfg"])
+    Host id: app42.example.com
+    Run directory: /var/run
+    Role: None
+    Verbose: False
+    Run once? False
+
+    >>> rc
+    0
+
+
+Clean up:
+
+    >>> zc.zkdeployment.agent.Agent = Agent

@@ -523,30 +523,35 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+(Backward incompatible.)
+
+- Added a required configuration file, specifying host-id & role (or
+  where to find them), as well as the run-directory.
+
 0.17.3 (2015-01-08)
-===================
+-------------------
 
 Fixed: monitor didn't close its ZooKeeper connection when done with
        it, leading to spurious errors on exit.
 
 0.17.2 (2015-01-06)
-===================
+-------------------
 
 - Fix computation of root-relative paths.
 
 0.17.1 (2015-01-06)
-===================
+-------------------
 
 broken yum
 
 0.17.0 (2015-01-06)
-===================
+-------------------
 
 - Replace the zim agent machinery with a simple status file and a
   nagios monitor that uses it.
 
 0.16.1 (2014-11-12)
-========================
+-------------------
 
 - Include bin/zdaemon in the RPM.
 
