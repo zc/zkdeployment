@@ -12,6 +12,7 @@ import os
 import Queue
 import re
 import shutil
+import shlex
 import signal
 import socket
 import sys
@@ -68,13 +69,14 @@ def name2path(name):
 class Agent(object):
 
     def __init__(self, host_id, run_directory, role=None,
-                 verbose=False, run_once=False):
+                 verbose=False, run_once=False, after=None):
         self.verbose = verbose
         self.root = os.getenv('TEST_ROOT', '/')
         self.host_identifier = host_id
         self.role = role
         self.status_location = os.path.join(run_directory, 'status')
         self.version_location = os.path.join(run_directory, 'host_version')
+        self.after = after
 
         if os.path.exists(self.version_location):
             with open(self.version_location, 'r') as fi:
@@ -471,6 +473,8 @@ class Agent(object):
             if (self.cluster_version is None) and not self.role_controller:
                 raise Abandon()
 
+        run_after_hook = False
+
         try:
             cluster_version = self.cluster_version
             if cluster_version is None:
@@ -496,10 +500,11 @@ class Agent(object):
             status('deploying')
 
             self.clean = False
+            run_after_hook = True
             self.update_role_controller()
 
             try:
-                # We often hang here agthering deployment info.
+                # We often hang here gathering deployment info.
                 # Try setting an alarm here ti exit if we take too long.
                 # This probably won't work because we'll probably
                 # be in the bowels of C where signals have no effect,
@@ -618,6 +623,7 @@ class Agent(object):
             logger.warning('Abandoning deployment because cluster version '
                            'is None')
         except:
+            run_after_hook = False
             self.hosts_properties.update(version=None)
             self.host_properties.update(error=str(sys.exc_info()[1]))
             logger.exception('deploying')
@@ -628,6 +634,19 @@ class Agent(object):
             logger.info('Done deploying version %s', cluster_version)
             status('done')
             self.failing = False
+
+        if run_after_hook and self.after:
+            logger.info('Running after hook')
+            try:
+                self.run_command(*self.after)
+            except:
+                self.hosts_properties.update(version=None)
+                self.host_properties.update(error=str(sys.exc_info()[1]))
+                logger.exception('after')
+                logger.critical(
+                    'FAILED after deploying version %s', cluster_version)
+                status('error')
+                self.failing = True
 
     def run(self):
         def handle_signal(*args):
@@ -762,9 +781,13 @@ def main(args=None):
     host_id = getvalue(cp, "host-id")
     run_directory = getvalue(cp, "run-directory")
     role = getvalue(cp, "role", optional=True)
+    after = getvalue(cp, "after", optional=True) or None
+    if after:
+        after = shlex.split(after)
 
     agent = Agent(host_id, run_directory, role,
-                  verbose=options.verbose, run_once=options.run_once)
+                  verbose=options.verbose, run_once=options.run_once,
+                  after=after)
     if not options.run_once:
         try:
             agent.run()

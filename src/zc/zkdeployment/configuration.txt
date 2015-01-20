@@ -21,12 +21,13 @@ the constructor parameters are affected by the configuration values.
     ...         pass
 
     >>> def agent_wrapper(host_id, run_directory, role=None,
-    ...                   verbose=False, run_once=False):
+    ...                   verbose=False, run_once=False, after=None):
     ...     print "Host id:", host_id
     ...     print "Run directory:", run_directory
     ...     print "Role:", role
     ...     print "Verbose:", verbose
     ...     print "Run once?", run_once
+    ...     print "After command:", after
     ...     return FauxAgent()
 
     >>> zc.zkdeployment.agent.Agent = agent_wrapper
@@ -107,6 +108,7 @@ Let's try something minimal but usable:
     Role: None
     Verbose: False
     Run once? False
+    After command: None
 
     >>> rc
     0
@@ -117,6 +119,7 @@ Let's try something minimal but usable:
     Role: None
     Verbose: True
     Run once? True
+    After command: None
 
     >>> rc
     0
@@ -143,6 +146,7 @@ the host id.
     Role: None
     Verbose: False
     Run once? False
+    After command: None
 
     >>> rc
     0
@@ -182,6 +186,7 @@ file:
     Role: stage
     Verbose: False
     Run once? False
+    After command: None
 
     >>> rc
     0
@@ -204,6 +209,7 @@ external resource:
     Role: customer.appserver
     Verbose: False
     Run once? False
+    After command: None
 
     >>> rc
     0
@@ -218,9 +224,89 @@ If the role file doesn't exist, no role is used:
     Role: None
     Verbose: False
     Run once? False
+    After command: None
 
     >>> rc
     0
+
+
+After-deployment command
+------------------------
+
+The after-deployment command can also be configured from the
+configuration file:
+
+    >>> with open("agent.cfg", "w") as f:
+    ...     print >>f, "[zkdeployment]"
+    ...     print >>f, "host-id = app42.example.com"
+    ...     print >>f, "run-directory = /var/run"
+    ...     print >>f, "after = true"
+
+    >>> rc = run(["agent.cfg"])
+    Host id: app42.example.com
+    Run directory: /var/run
+    Role: None
+    Verbose: False
+    Run once? False
+    After command: ['true']
+
+    >>> rc
+    0
+
+Long after-deployment commands can span multiple lines and include
+arguments with spaces:
+
+    >>> with open("agent.cfg", "w") as f:
+    ...     print >>f, "[zkdeployment]"
+    ...     print >>f, "host-id = app42.example.com"
+    ...     print >>f, "run-directory = /var/run"
+    ...     print >>f, "after = echo"
+    ...     print >>f, "    'spoons are round' "
+    ...     print >>f
+    ...     print >>f, " \"just 'cuz they are \" "
+
+    >>> rc = run(["agent.cfg"])
+    Host id: app42.example.com
+    Run directory: /var/run
+    Role: None
+    Verbose: False
+    Run once? False
+    After command: ['echo', 'spoons are round', "just 'cuz they are "]
+
+Whitespace within a single argument may be surprising if there are
+newlines within the argument as well.  The newline is preserved, but not
+other whitespace surround the newline:
+
+    >>> with open("agent.cfg", "w") as f:
+    ...     print >>f, "[zkdeployment]"
+    ...     print >>f, "host-id = app42.example.com"
+    ...     print >>f, "run-directory = /var/run"
+    ...     print >>f, "after = echo ' "
+    ...     print >>f, "    this is long text'"
+
+    >>> rc = run(["agent.cfg"])
+    Host id: app42.example.com
+    Run directory: /var/run
+    Role: None
+    Verbose: False
+    Run once? False
+    After command: ['echo', '\nthis is long text']
+
+An empty ``after`` setting is equivalent to an omitted setting:
+
+    >>> with open("agent.cfg", "w") as f:
+    ...     print >>f, "[zkdeployment]"
+    ...     print >>f, "host-id = app42.example.com"
+    ...     print >>f, "run-directory = /var/run"
+    ...     print >>f, "after ="
+
+    >>> rc = run(["agent.cfg"])
+    Host id: app42.example.com
+    Run directory: /var/run
+    Role: None
+    Verbose: False
+    Run once? False
+    After command: None
 
 
 Clean up:

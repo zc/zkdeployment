@@ -1,0 +1,228 @@
+=========================
+The after-deployment hook
+=========================
+
+The agent supports an after-deployment hook, specified as a command in
+the configuration file (see configuration.txt).  The optional command is
+passed as an argv-style array into the Agent constructor.
+
+Operation without the after-deployment hook is discussed in agent.txt;
+this covers only the invocation of the hook and interpretation of
+failures reported via the hook's return code.
+
+Let's start by creating an agent with an after-deployment hook:
+
+    >>> import zc.zk
+    >>> import zc.zkdeployment.agent
+
+    >>> setup_logging()
+
+    >>> agent = zc.zkdeployment.agent.Agent(
+    ...     '424242424242', run_directory, after=['echo', 'after'])
+    INFO Agent starting, cluster 1, host 1
+
+Here's the deployment tree we're starting with:
+
+    >>> zk = zc.zk.ZK('zookeeper:2181')
+    >>> zk.print_tree()
+    /cust
+      /someapp
+        /cms : z4m
+          version = u'1.0.0'
+          /deploy
+            /424242424242
+        /monitor : z4mmonitor
+          version = u'1.1.0'
+          /deploy
+            /424242424242
+    /cust2
+      /someapp
+        /cms : z4m
+          version = u'1.0.0'
+          /deploy
+            /424242424242
+    /hosts
+      version = 1
+      /424242424242
+        name = u'host42'
+        version = 1
+
+Removing the monitor configuration, we see the deployment for that part
+is removed, and then the after-deployment hook is run::
+
+    /cust
+      /someapp
+        /cms : z4m
+           version = '1.0.0'
+           /deploy
+              /424242424242
+
+    /cust2
+      /someapp
+        /cms : z4m
+           version = '1.0.0'
+           /deploy
+              /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+When we update the version number of the hosts node, the agent is
+going to uninstall the missing monitor installation and run the
+installation script for everything that's installed, then run the after
+commit hook if there are no errors:
+
+    >>> import time
+
+    >>> hosts_properties = zk.properties('/hosts')
+    >>> version = 1
+    >>> wait = .1 if ZooKeeper else .5
+
+    >>> def set_hosts_version(value):
+    ...     hosts_properties.update(version=value)
+    ...     time.sleep(wait)
+
+    >>> def bump_version(inc=1, value=None):
+    ...     global version
+    ...     version += inc
+    ...     set_hosts_version(version)
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 2
+    INFO /opt/z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    z4mmonitor/bin/zookeeper-deploy -u /cust/someapp/monitor 0
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    INFO yum -y remove z4mmonitor
+    yum -y remove z4mmonitor
+    INFO Done deploying version 2
+    INFO Running after hook
+    INFO echo after
+    echo after
+
+If there's an error during the deployment, the after hook isn't run::
+
+    /cust
+      /someapp
+        /cms : z4m
+           version = '666'
+           /deploy
+              /424242424242
+
+    /cust2
+      /someapp
+        /cms : z4m
+           version = '666'
+           /deploy
+              /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 3
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install z4m-666
+    yum -y install z4m-666
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO yum -y downgrade z4m-666
+    yum -y downgrade z4m-666
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    ERROR deploying
+    Traceback (most recent call last):
+      ...
+    SystemError: Failed to install z4m-666 (installed: 1.0.0)
+    CRITICAL FAILED deploying version 3
+
+If the error is corrected in a new version of the software, it can be
+deployed, and the after-deployment hook will be run:
+
+    /cust
+      /someapp
+        /cms : z4m
+           version = '1.0.1'
+           /deploy
+              /424242424242
+
+    /cust2
+      /someapp
+        /cms : z4m
+           version = '1.0.1'
+           /deploy
+              /424242424242
+
+.. -> tree
+
+    >>> zk.import_tree(tree, trim=True)
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 4
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO yum -y clean all
+    yum -y clean all
+    INFO yum -y install z4m-1.0.1
+    yum -y install z4m-1.0.1
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    INFO yum -y remove z4m-666
+    yum -y remove z4m-666
+    INFO Done deploying version 4
+    INFO Running after hook
+    INFO echo after
+    echo after
+
+It's also possible for the after-deployment hook to fail, in which case
+we consider the deployment as a whole a failure.  We'll need an agent
+with a different configuration to demonstrate this:
+
+    >>> agent.close()
+    >>> agent = zc.zkdeployment.agent.Agent(
+    ...     '424242424242', run_directory, after=['echo', '666'])
+    INFO Agent starting, cluster 4, host 4
+
+    >>> bump_version()
+    INFO ============================================================
+    INFO Deploying version 5
+    INFO yum -q list installed z4m
+    yum -q list installed z4m
+    INFO /opt/z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust/someapp/cms 0
+    INFO /opt/z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    z4m/bin/zookeeper-deploy /cust2/someapp/cms 0
+    INFO Done deploying version 5
+    INFO Running after hook
+    INFO echo 666
+    echo 666
+    ERROR FAILURE
+    ERROR after
+    Traceback (most recent call last):
+      ...
+    RuntimeError: Command failed: echo 666
+    CRITICAL FAILED after deploying version 5
+    WARNING Not deploying because cluster version is None
+
+Because of the failure, we've set the version property of the /hosts
+node to None:
+
+    >>> hosts_properties['version']
+
+See also ``agent_bails_on_None`` in tests.py.

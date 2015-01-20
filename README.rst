@@ -528,6 +528,8 @@ Changes
 - Added a required configuration file, specifying host-id & role (or
   where to find them), as well as the run-directory.
 
+- Added an after-deployment hook to run a command after deployments.
+
 0.17.3 (2015-01-08)
 -------------------
 
