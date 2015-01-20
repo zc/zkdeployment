@@ -473,7 +473,7 @@ class Agent(object):
             if (self.cluster_version is None) and not self.role_controller:
                 raise Abandon()
 
-        self.run_after_hook = False
+        run_after_hook = False
 
         try:
             cluster_version = self.cluster_version
@@ -500,7 +500,7 @@ class Agent(object):
             status('deploying')
 
             self.clean = False
-            self.run_after_hook = True
+            run_after_hook = True
             self.update_role_controller()
 
             try:
@@ -623,7 +623,7 @@ class Agent(object):
             logger.warning('Abandoning deployment because cluster version '
                            'is None')
         except:
-            self.run_after_hook = False
+            run_after_hook = False
             self.hosts_properties.update(version=None)
             self.host_properties.update(error=str(sys.exc_info()[1]))
             logger.exception('deploying')
@@ -635,19 +635,18 @@ class Agent(object):
             status('done')
             self.failing = False
 
-        if self.run_after_hook and self.after:
+        if run_after_hook and self.after:
             logger.info('Running after hook')
             try:
                 self.run_command(*self.after)
             except:
-                if not self.failing:
-                    self.hosts_properties.update(version=None)
-                    self.host_properties.update(error=str(sys.exc_info()[1]))
-                    logger.exception('after')
-                    logger.critical(
-                        'FAILED after deploying version %s', cluster_version)
-                    status('error')
-                    self.failing = True
+                self.hosts_properties.update(version=None)
+                self.host_properties.update(error=str(sys.exc_info()[1]))
+                logger.exception('after')
+                logger.critical(
+                    'FAILED after deploying version %s', cluster_version)
+                status('error')
+                self.failing = True
 
     def run(self):
         def handle_signal(*args):
