@@ -301,6 +301,11 @@ def subprocess_popen(args, stdout=None, stderr=None):
                 raise ValueError("Unexpected arguments for chmod")
             print command, ' '.join(args)
 
+        elif command == 'echo':
+            print command, ' '.join(args)
+            if '666' in args:
+                return FakeSubprocess(returncode=1)
+
         elif command == '/etc/init.d/zimagent':
             print command, ' '.join(args)
 
@@ -554,7 +559,6 @@ Let's switch back for good measure (and to see if we're getting paths right:
 
 And finally, remove, which should clean up the etc dir:
 
-
     >>> zk.delete_recursive('/cust')
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
     ...     zk.properties('/hosts').update(version=4); time.sleep(.50)
@@ -738,7 +742,9 @@ def agent_bails_on_None():
     r"""
 
     If an agent becomes unblocked by lock releasing and finds the
-    cluster version to be None, it will abandon the update.
+    cluster version to be None, it will abandon the update.  When
+    abandoning the update beacuse of another node's failure, the
+    after-deployment hook is still run.
 
     >>> setup_logging()
     >>> import zc.zk
@@ -749,7 +755,8 @@ def agent_bails_on_None():
     ... /hosts
     ...    version = 1
     ... ''', trim=True)
-    >>> agent = zc.zkdeployment.agent.Agent('424242424242', run_directory)
+    >>> agent = zc.zkdeployment.agent.Agent(
+    ...    '424242424242', run_directory, after=['echo', 'foobar'])
     INFO Agent starting, cluster 1, host 1
 
     >>> lock = zk.client.Lock('/agent-locks/app', '42')
@@ -772,6 +779,9 @@ def agent_bails_on_None():
     >>> zk.properties('/hosts').update(version=None)
     >>> _ = lock.release(); time.sleep(.1) # doctest: +ELLIPSIS
     WARNING Abandoning deployment because cluster version is None...
+    INFO Running after hook
+    INFO echo foobar
+    WARNING Not deploying because cluster version is None
 
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
     ...     zk.properties('/hosts').update(version=2); time.sleep(.1)
@@ -789,6 +799,9 @@ def agent_bails_on_None():
     INFO yum -y remove z4mmonitor
     yum -y remove z4mmonitor
     INFO Done deploying version 2
+    INFO Running after hook
+    INFO echo foobar
+    echo foobar
 
     >>> agent.close()
     >>> zk.close()
@@ -1018,6 +1031,13 @@ def setUp(test, initial_tree=initial_tree,
 def setup_sync(test):
     setUp(test, initial_tree=' ')
 
+def setup_subprocess(test):
+    setUp(test)
+    zope.testing.setupstack.context_manager(
+        test, mock.patch('subprocess.Popen',
+                         side_effect=subprocess_popen)
+        )
+
 role_controller_file_system = dict(
     etc = dict(
         zmh = dict(
@@ -1046,7 +1066,14 @@ def test_suite():
     suite.addTest(
         manuel.testing.TestSuite(
             m,
-            'agent.txt', 'configuration.txt', 'git.txt', 'monitor.txt',
+            'agent.txt', 'after.txt',
+            setUp=setup_subprocess,
+            tearDown=zope.testing.setupstack.tearDown,
+            ))
+    suite.addTest(
+        manuel.testing.TestSuite(
+            m,
+            'configuration.txt', 'git.txt', 'monitor.txt',
             setUp=setUp,
             tearDown=zope.testing.setupstack.tearDown,
             ))

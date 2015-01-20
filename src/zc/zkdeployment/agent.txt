@@ -6,21 +6,16 @@ Agents
 Agents are responsible for watching a ZooKeeper tree and making local
 updates to reflect what's in a tree.
 
-Agents can determine their own host identifier based on configuration;
-see configuration.txt for details.
+Agent processes can determine their own host identifier based on
+configuration; see configuration.txt for details.
 
 Low-level machinery
 -------------------
 
-Create an agent:
+Create an agent.  The host identifier is passed to the agent
+constructor:
 
-    >>> import mock
     >>> import zc.zkdeployment.agent
-    >>> patcher = mock.patch('subprocess.Popen',
-    ...     **{'side_effect': zc.zkdeployment.tests.subprocess_popen})
-    >>> _ = patcher.start()
-
-The host identifier is passed to the agent constructor:
 
     >>> agent = zc.zkdeployment.agent.Agent(
     ...     '424242424242', run_directory)
@@ -1522,10 +1517,6 @@ tool *will* still sync VCS with the ZooKeeper tree if the version is
 False.  When you've solved a deployment problem by updating VCS, you
 can cause the update to be propagated on the next sync by setting the
 ``/hosts`` version to False.
-
-.. tear down
-
-    >>> patcher.stop()
 
 
 .. [#testroot] To make testing easier, the applications in this
