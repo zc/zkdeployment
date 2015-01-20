@@ -3,6 +3,7 @@ from zc.zkdeployment.interfaces import IVCS
 import ConfigParser
 import collections
 import contextlib
+import errno
 import json
 import kazoo.exceptions
 import logging
@@ -30,12 +31,14 @@ parser.add_argument(
     default=False, help='Run one deployment, and then exit')
 parser.add_argument(
     '--assert-zookeeper-address', '-z',
+    metavar='ADDRESS',
     help=
     "Assert that the name 'zookeeper' resolves to the given address.\n"
     "This is useful when staging to make sure you don't accidentally connect\n"
     "to a production ZooKeeper server.")
 parser.add_argument(
-    'configuration')
+    'configuration',
+    help="Path to configuration file.")
 
 DONT_CARE = object()
 
@@ -64,7 +67,7 @@ def name2path(name):
 
 class Agent(object):
 
-    def __init__(self, host_id, run_directory=os.curdir, role=None,
+    def __init__(self, host_id, run_directory, role=None,
                  verbose=False, run_once=False):
         self.verbose = verbose
         self.root = os.getenv('TEST_ROOT', '/')
@@ -699,7 +702,14 @@ def register():
     zc.zkdeployment.git.register()
     zc.zkdeployment.svn.register()
 
-def getvalue(value):
+def getvalue(cp, name, optional=False):
+    try:
+        value = cp.get("zkdeployment", name)
+    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+        if not optional:
+            sys.stderr.write("%s not specified\n" % name)
+            sys.exit(2)
+        return None
     m = re.match(r"[a-z][-a-z0-9]*:", value)
     if m is None:
         return value
@@ -710,7 +720,11 @@ def getvalue(value):
             return open(path).read().strip()
         except IOError as e:
             if e.errno == errno.ENOENT:
-                return None
+                if optional:
+                    return None
+                sys.stderr.write("%s not specified\n" % name)
+                sys.exit(2)
+            raise
     else:
         import requests
         r = requests.get(value)
@@ -745,12 +759,9 @@ def main(args=None):
         format='%(asctime)s %(name)s %(levelname)s %(message)s'
         )
 
-    host_id = getvalue(cp.get("zkdeployment", "host-id"))
-    run_directory = cp.get("zkdeployment", "run-directory")
-    try:
-        role = getvalue(cp.get("zkdeployment", "role"))
-    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
-        role = None
+    host_id = getvalue(cp, "host-id")
+    run_directory = getvalue(cp, "run-directory")
+    role = getvalue(cp, "role", optional=True)
 
     agent = Agent(host_id, run_directory, role,
                   verbose=options.verbose, run_once=options.run_once)

@@ -1046,7 +1046,7 @@ def test_suite():
     suite.addTest(
         manuel.testing.TestSuite(
             m,
-            'agent.txt', 'git.txt', 'monitor.txt',
+            'agent.txt', 'configuration.txt', 'git.txt', 'monitor.txt',
             setUp=setUp,
             tearDown=zope.testing.setupstack.tearDown,
             ))

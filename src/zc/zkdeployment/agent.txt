@@ -953,7 +953,6 @@ Now, we'll install a cranky app::
         /deploy
           /cache
 
-
 .. -> tree
 
     >>> zk.import_tree(tree, trim=True)
@@ -1294,8 +1293,6 @@ Now, remove the deployment again::
           /cache
 
 .. -> tree
-
-
 
     >>> zk.import_tree(tree, trim=True)
     >>> bump_version() # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
