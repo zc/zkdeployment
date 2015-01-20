@@ -386,7 +386,7 @@ def test_legacy_host_entries():
     ... ''')
 
     >>> import os
-    >>> os.remove(os.path.join('etc', 'zim', 'host_version'))
+    >>> os.remove(os.path.join(run_directory, 'host_version'))
 
     >>> import zc.zkdeployment.agent
     >>> agent = zc.zkdeployment.agent.Agent('424242424242', run_directory)
@@ -435,7 +435,7 @@ def test_non_empty_etc():
     >>> setup_logging()
     >>> zk = zc.zk.ZK('zookeeper:2181')
     >>> import zc.zkdeployment.agent
-    >>> os.remove(os.path.join('etc', 'zim', 'host_version'))
+    >>> os.remove(os.path.join(run_directory, 'host_version'))
     >>> with mock.patch('subprocess.Popen', side_effect=subprocess_popen):
     ...     agent = zc.zkdeployment.agent.Agent('424242424242', run_directory)
     ...     time.sleep(.50)
