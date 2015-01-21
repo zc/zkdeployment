@@ -523,7 +523,8 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
-(Backward incompatible.)
+1.0.0 (2015-01-21)
+------------------
 
 - Added a required configuration file, specifying host-id & role (or
   where to find them), as well as the run-directory.
