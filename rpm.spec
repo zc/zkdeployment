@@ -1,5 +1,5 @@
 Name: zkdeployment
-Version: 1.0.0
+Version: 0
 Release: 1
 
 Summary: ZooKeeper Deployment
