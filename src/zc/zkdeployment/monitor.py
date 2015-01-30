@@ -58,28 +58,31 @@ def main(args=None):
             t, _, version, status = f.read().strip().split(None, 3)
     except IOError, err:
         return error(str(err))
+
     if status == 'error':
         return error("Error deploying %s" % version)
-    if status == 'done' and version != str(zkversion):
-        return error('Version mismatch (status: %s, cluster: %s)'
-                     % (version, zkversion))
-    if status == 'done' and version == str(zkversion):
-        # Looks ok, but double-check that this matches the live tree.
-        if 'version' not in host_properties:
-            return error('No version information for host')
-        host_version = str(host_properties['version'])
-        if host_version != version:
-            return error('Version mismatch (status: %s, zk: %s)'
-                         % (version, host_version))
-        print version
-        return None
-    elapsed = time.time() - float(t)
-    if elapsed > args.warn:
-        message = "Too long deploying %s (%s; %d > %%s)" % (
-            version, status, elapsed)
-        if elapsed > args.error:
-            return error(message % args.error)
+    elif status == 'done':
+        if version != str(zkversion):
+            return error('Version mismatch (status: %s, cluster: %s)'
+                         % (version, zkversion))
         else:
-            return warn(message % args.warn)
-    print status
-    return None
+            # Looks ok, but double-check that this matches the live tree.
+            if 'version' not in host_properties:
+                return error('No version information for host')
+            host_version = str(host_properties['version'])
+            if host_version != version:
+                return error('Version mismatch (status: %s, zk: %s)'
+                             % (version, host_version))
+            print version
+            return None
+    else:
+        elapsed = time.time() - float(t)
+        if elapsed > args.warn:
+            message = "Too long deploying %s (%s; %d > %%s)" % (
+                version, status, elapsed)
+            if elapsed > args.error:
+                return error(message % args.error)
+            else:
+                return warn(message % args.warn)
+        print status
+        return None
