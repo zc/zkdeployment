@@ -523,6 +523,9 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+1.0.2 (2015-01-30)
+------------------
+
 - Pass path of the agent configuration file to the monitor (instead of
   the status file).
 
