@@ -133,14 +133,14 @@ If it's taking a bit long:
 
     >>> status(1, 'installing foo', time.time() - 300.1)
     >>> monitor(['config.ini'])
-    Too long deploying 1 (installing foo) 300 > 200
+    Too long deploying 1 (installing foo; 300 > 200)
     1
 
 Or way too long:
 
     >>> status(1, 'installing foo', time.time() - 700.1)
     >>> monitor(['config.ini'])
-    Too long deploying 1 (installing foo) 700 > 600
+    Too long deploying 1 (installing foo; 700 > 600)
     2
 
 Let's play with command-line options:
@@ -151,11 +151,11 @@ Let's play with command-line options:
     FailedConnect: localhost
 
     >>> monitor(['config.ini', '-w99', '-e999'])
-    Too long deploying 1 (installing foo) 700 > 99
+    Too long deploying 1 (installing foo; 700 > 99)
     1
 
     >>> monitor(['config.ini', '-w99', '-e199'])
-    Too long deploying 1 (installing foo) 700 > 199
+    Too long deploying 1 (installing foo; 700 > 199)
     2
 
 If the version for the host doesn't match between the status file and

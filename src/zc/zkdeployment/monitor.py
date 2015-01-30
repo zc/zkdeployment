@@ -72,7 +72,7 @@ def main(args=None):
         return None
     elapsed = time.time() - float(t)
     if elapsed > args.warn:
-        message = "Too long deploying %s (%s) %d > %%s" % (
+        message = "Too long deploying %s (%s; %d > %%s)" % (
             version, status, elapsed)
         if elapsed > args.error:
             return error(message % args.error)

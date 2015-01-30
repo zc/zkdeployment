@@ -528,6 +528,9 @@ Changes
 
 - Monitor checks that the status file matches the zookeeper tree.
 
+- Parenthesize some details in the "too long ..." message to avoid
+  unintentional alerts.
+
 1.0.1 (2015-01-30)
 ------------------
 
