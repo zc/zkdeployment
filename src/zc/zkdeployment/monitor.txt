@@ -168,6 +168,15 @@ zookeeper, an error is reported:
     Version mismatch (status: 1, zk: 2)
     2
 
+If the agent thinks it's completed deployments, but the host's version
+doesn't match the cluster version, that's an error as well:
+
+    >>> status(2, 'done')
+
+    >>> monitor(['config.ini'])
+    Version mismatch (status: 2, cluster: 1)
+    2
+
 We error if the state file is missing:
 
     >>> import os

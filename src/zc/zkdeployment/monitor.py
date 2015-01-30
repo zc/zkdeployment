@@ -60,6 +60,9 @@ def main(args=None):
         return error(str(err))
     if status == 'error':
         return error("Error deploying %s" % version)
+    if status == 'done' and version != str(zkversion):
+        return error('Version mismatch (status: %s, cluster: %s)'
+                     % (version, zkversion))
     if status == 'done' and version == str(zkversion):
         # Looks ok, but double-check that this matches the live tree.
         if 'version' not in host_properties:
