@@ -18,8 +18,11 @@ constructor:
     >>> import zc.zkdeployment.agent
 
     >>> agent = zc.zkdeployment.agent.Agent(
-    ...     '424242424242', run_directory)
+    ...     u'424242424242', run_directory)
     INFO Agent starting, cluster 1, host 1
+
+(Note we used a unicode host id here, to make sure it works, cuz thete
+was a bug before.)
 
 An agent may also have a role.  We'll say more about that later. This
 one doesn't have one:

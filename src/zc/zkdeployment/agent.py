@@ -72,7 +72,7 @@ class Agent(object):
                  verbose=False, run_once=False, after=None):
         self.verbose = verbose
         self.root = os.getenv('TEST_ROOT', '/')
-        self.host_identifier = host_id
+        self.host_identifier = str(host_id)
         self.role = role
         self.status_location = os.path.join(run_directory, 'status')
         self.version_location = os.path.join(run_directory, 'host_version')

@@ -523,6 +523,11 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+1.0.1 (2015-01-30)
+------------------
+
+- Host ids gotten via HTTP caused agents to fail to start.
+
 1.0.0 (2015-01-21)
 ------------------
 
