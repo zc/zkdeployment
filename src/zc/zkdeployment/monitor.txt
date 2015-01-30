@@ -60,59 +60,127 @@ doing this a lot:
     ...     with open('status', 'w') as f:
     ...         f.write("%s 42 %s %s\n" % (t or time.time(), version, status))
 
+    >>> with open('config.ini', 'w') as f:
+    ...     f.write(
+    ...         '[zkdeployment]\n'
+    ...         'run-directory = .\n'
+    ...         'host-id = 424242424242\n'
+    ...         )
+
     >>> status(1, 'done')
+
+The monitor also verifies that the state file matches what's recorded in
+zookeeper.  Looking at the current tree, we see this node isn't registered
+yet:
+
+    >>> import zc.zk
+    >>> zk = zc.zk.ZK('zookeeper:2181')
+    >>> zk.print_tree('/hosts')
+    /hosts
+      version = 1
+
+Running the monitor, we're told there's a serious error:
+
+    >>> monitor(['config.ini'])
+    Host not registered
+    2
+
+Let's create the host registration:
+
+    >>> zk.create('/hosts/424242424242')
+    u'/hosts/424242424242'
+    >>> host_properties = zk.properties('/hosts/424242424242')
+    >>> host_properties.update(name='app42.example.net')
+
+Running the monitor again before the host's version is stored still
+produces an error:
+
+    >>> monitor(['config.ini'])
+    No version information for host
+    2
+
+If the version information is set zookeeper, all is good:
+
+    >>> host_properties.update(version='1')
+    >>> monitor(['config.ini'])
+    1
+
+If the version isn't a string, that's ok too; it will be converted:
+
+    >>> host_properties.update(version=1)
+    >>> monitor(['config.ini'])
+    1
 
 Let's run the monitor:
 
-    >>> monitor(['status'])
-    done
+    >>> monitor(['config.ini'])
+    1
 
 If the status shows an error:
 
     >>> status(1, 'error')
-    >>> monitor(['status'])
+    >>> monitor(['config.ini'])
     Error deploying 1
     2
 
 If it shows some other status:
 
     >>> status(1, 'installing foo')
-    >>> monitor(['status'])
+    >>> monitor(['config.ini'])
     installing foo
 
 If it's taking a bit long:
 
     >>> status(1, 'installing foo', time.time() - 300.1)
-    >>> monitor(['status'])
-    Too long deploying 1 (installing foo) 300 > 200
+    >>> monitor(['config.ini'])
+    Too long deploying 1 (installing foo; 300 > 200)
     1
 
 Or way too long:
 
     >>> status(1, 'installing foo', time.time() - 700.1)
-    >>> monitor(['status'])
-    Too long deploying 1 (installing foo) 700 > 600
+    >>> monitor(['config.ini'])
+    Too long deploying 1 (installing foo; 700 > 600)
     2
 
 Let's play with command-line options:
 
-    >>> monitor(['status', '-zlocalhost'])
+    >>> monitor(['config.ini', '-zlocalhost'])
     Traceback (most recent call last):
     ...
     FailedConnect: localhost
 
-    >>> monitor(['status', '-w99', '-e999'])
-    Too long deploying 1 (installing foo) 700 > 99
+    >>> monitor(['config.ini', '-w99', '-e999'])
+    Too long deploying 1 (installing foo; 700 > 99)
     1
 
-    >>> monitor(['status', '-w99', '-e199'])
-    Too long deploying 1 (installing foo) 700 > 199
+    >>> monitor(['config.ini', '-w99', '-e199'])
+    Too long deploying 1 (installing foo; 700 > 199)
+    2
+
+If the version for the host doesn't match between the status file and
+zookeeper, an error is reported:
+
+    >>> host_properties.update(version=2)
+    >>> status(1, 'done')
+
+    >>> monitor(['config.ini'])
+    Version mismatch (status: 1, zk: 2)
+    2
+
+If the agent thinks it's completed deployments, but the host's version
+doesn't match the cluster version, that's an error as well:
+
+    >>> status(2, 'done')
+
+    >>> monitor(['config.ini'])
+    Version mismatch (status: 2, cluster: 1)
     2
 
 We error if the state file is missing:
 
     >>> import os
     >>> os.remove('status')
-    >>> monitor(['status', '-w99', '-e199'])
-    [Errno 2] No such file or directory: 'status'
+    >>> monitor(['config.ini', '-w99', '-e199'])
+    [Errno 2] No such file or directory: './status'
     2
