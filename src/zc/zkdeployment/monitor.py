@@ -58,7 +58,6 @@ def main(args=None):
             t, _, version, status = f.read().strip().split(None, 3)
     except IOError, err:
         return error(str(err))
-    #import pdb; pdb.set_trace()
     if status == 'error':
         return error("Error deploying %s" % version)
     if status == 'done' and version == str(zkversion):
