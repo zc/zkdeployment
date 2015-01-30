@@ -523,6 +523,11 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+- Pass path of the agent configuration file to the monitor (instead of
+  the status file).
+
+- Monitor checks that the status file matches the zookeeper tree.
+
 1.0.1 (2015-01-30)
 ------------------
 

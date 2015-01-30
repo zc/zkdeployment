@@ -721,39 +721,54 @@ def register():
     zc.zkdeployment.git.register()
     zc.zkdeployment.svn.register()
 
-def getvalue(cp, name, optional=False):
-    try:
-        value = cp.get("zkdeployment", name)
-    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
-        if not optional:
-            sys.stderr.write("%s not specified\n" % name)
-            sys.exit(2)
-        return None
-    m = re.match(r"[a-z][-a-z0-9]*:", value)
-    if m is None:
-        return value
-    elif value.startswith("file:///"):
-        # requests doesn't handle this out of the box, 'cuz ???
-        path = value[7:]
+
+class Configuration(object):
+
+    def __init__(self, path):
+        self._cp = ConfigParser.RawConfigParser()
+        self._cp.option_xform = str
+        self._cp.readfp(open(path))
+        self.host_id = str(self._getvalue("host-id"))
+        self.run_directory = self._getvalue("run-directory")
+        self.after = self._getvalue("after", optional=True) or None
+        if self.after:
+            self.after = shlex.split(self.after)
+        self.role = self._getvalue("role", optional=True)
+
+    def _getvalue(self, name, optional=False):
         try:
-            return open(path).read().strip()
-        except IOError as e:
-            if e.errno == errno.ENOENT:
-                if optional:
-                    return None
+            value = self._cp.get("zkdeployment", name)
+        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+            if not optional:
                 sys.stderr.write("%s not specified\n" % name)
                 sys.exit(2)
-            raise
-    else:
-        import requests
-        r = requests.get(value)
-        if r.status_code == 404:
             return None
-        elif r.status_code == 200:
-            return r.text.strip()
+        m = re.match(r"[a-z][-a-z0-9]*:", value)
+        if m is None:
+            return value
+        elif value.startswith("file:///"):
+            # requests doesn't handle this out of the box, 'cuz ???
+            path = value[7:]
+            try:
+                return open(path).read().strip()
+            except IOError as e:
+                if e.errno == errno.ENOENT:
+                    if optional:
+                        return None
+                    sys.stderr.write("%s not specified\n" % name)
+                    sys.exit(2)
+                raise
         else:
-            raise ValueError("unexpected response code %s from %s"
-                             % (r.status_code, value))
+            import requests
+            r = requests.get(value)
+            if r.status_code == 404:
+                return None
+            elif r.status_code == 200:
+                return r.text.strip()
+            else:
+                raise ValueError("unexpected response code %s from %s"
+                                 % (r.status_code, value))
+
 
 def main(args=None):
     if args is None:
@@ -762,9 +777,6 @@ def main(args=None):
     register()
 
     options = parser.parse_args(args)
-    cp = ConfigParser.RawConfigParser()
-    cp.option_xform = str
-    cp.readfp(open(options.configuration))
 
     if (options.assert_zookeeper_address and
         socket.gethostbyname('zookeeper') != options.assert_zookeeper_address
@@ -778,16 +790,10 @@ def main(args=None):
         format='%(asctime)s %(name)s %(levelname)s %(message)s'
         )
 
-    host_id = getvalue(cp, "host-id")
-    run_directory = getvalue(cp, "run-directory")
-    role = getvalue(cp, "role", optional=True)
-    after = getvalue(cp, "after", optional=True) or None
-    if after:
-        after = shlex.split(after)
-
-    agent = Agent(host_id, run_directory, role,
+    config = Configuration(options.configuration)
+    agent = Agent(config.host_id, config.run_directory, config.role,
                   verbose=options.verbose, run_once=options.run_once,
-                  after=after)
+                  after=config.after)
     if not options.run_once:
         try:
             agent.run()
