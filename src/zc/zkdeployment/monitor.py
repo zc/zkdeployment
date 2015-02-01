@@ -18,6 +18,7 @@ import os.path
 import sys
 import time
 import zc.zk
+import zc.zkdeployment.agent
 
 parser = argparse.ArgumentParser(
     description='Check status of a zkdeployment monitor')

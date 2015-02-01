@@ -523,6 +523,11 @@ Cause a zimagent alert?  Send an email?
 Changes
 =======
 
+1.0.3 (2015-02-01)
+------------------
+
+- Added missing import in monitor
+
 1.0.2 (2015-01-30)
 ------------------
 
